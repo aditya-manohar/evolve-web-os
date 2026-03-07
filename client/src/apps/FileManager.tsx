@@ -46,7 +46,7 @@ export default function FileManager({ close }: any) {
             body: JSON.stringify({ name, path })
         })
 
-        loadFiles()
+        loadFiles(path)
     }
 
     const addFile = async () => {
@@ -61,7 +61,7 @@ export default function FileManager({ close }: any) {
             body: JSON.stringify({ name, path })
         })
 
-        loadFiles()
+        loadFiles(path)
     }
 
     useEffect(() => {

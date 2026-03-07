@@ -37,14 +37,14 @@ router.post("/mkdir", (req, res) => {
 })
 
 router.post("/create", (req, res) => {
-    const { name } = req.body
+    const { name, path: dir } = req.body
 
-    const filePath = path.join(WORKSPACE, name)
+    const filePath = path.join(WORKSPACE, dir || "", name)
 
     try {
         fs.writeFileSync(filePath, "")
         res.json({ success: true })
-    } catch {
+    } catch (err) {
         res.status(500).json({ error: "Unable to create file" })
     }
 })
