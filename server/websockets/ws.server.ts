@@ -8,12 +8,15 @@ export function startWSServer(server: http.Server) {
 
   wss.on("connection", (ws) => {
 
-    const shell = spawn("bash", [], {
+    const shell = spawn("bash", ["--noprofile", "--norc"], {
       name: "xterm-color",
       cols: 80,
       rows: 30,
-      cwd: process.env.HOME,
-      env: process.env
+      cwd: "./storage/workspace",
+      env: {
+        ...process.env,
+        PS1: "evolve:/workspace$ "
+      }
     })
 
     shell.onData((data: string) => {

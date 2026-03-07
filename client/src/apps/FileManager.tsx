@@ -1,5 +1,5 @@
 import Window from "../desktop/Window"
-import { useState } from "react"
+import { useEffect, useState } from "react"
 
 type Item = {
     name: string
@@ -10,17 +10,45 @@ export default function FileManager({ close }: any) {
 
     const [items, setItems] = useState<Item[]>([])
 
-    const addFile = () => {
-        const name = prompt("File name")
-        if (!name) return
-        setItems([...items, { name, type: "file" }])
+    const loadFiles = async () => {
+        const res = await fetch("http://localhost:4000/api/files/list")
+        const data = await res.json()
+        setItems(data)
     }
 
-    const addFolder = () => {
+    const addFolder = async () => {
         const name = prompt("Folder name")
         if (!name) return
-        setItems([...items, { name, type: "folder" }])
+
+        await fetch("http://localhost:4000/api/files/mkdir", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({ name })
+        })
+
+        loadFiles()
     }
+
+    const addFile = async () => {
+        const name = prompt("File name")
+        if (!name) return
+
+        await fetch("http://localhost:4000/api/files/create", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({ name })
+        })
+
+        loadFiles()
+    }
+
+    useEffect(() => {
+        loadFiles()
+    }, [])
 
     return (
         <Window title="Files" onClose={close}>
@@ -32,8 +60,6 @@ export default function FileManager({ close }: any) {
                     background: "#1e1e1e"
                 }}
             >
-
-                {/* Toolbar */}
                 <div
                     style={{
                         padding: "8px",
@@ -45,8 +71,6 @@ export default function FileManager({ close }: any) {
                     <button onClick={addFile}>+ File</button>
                     <button onClick={addFolder}>+ Folder</button>
                 </div>
-
-                {/* Files Area */}
                 <div
                     style={{
                         flex: 1,
@@ -90,7 +114,6 @@ export default function FileManager({ close }: any) {
                         ))
                     )}
                 </div>
-
             </div>
         </Window>
     )
