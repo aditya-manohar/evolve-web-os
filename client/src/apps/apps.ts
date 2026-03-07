@@ -1,4 +1,5 @@
 import TerminalApp from "./TerminalApp"
+import FileManager from "./FileManager"
 
 export const apps = [
   {
@@ -6,5 +7,11 @@ export const apps = [
     name: "Terminal",
     icon: "🖥",
     component: TerminalApp
+  },
+  {
+    id: "files",
+    name: "Files",
+    icon: "📁",
+    component: FileManager
   }
 ]

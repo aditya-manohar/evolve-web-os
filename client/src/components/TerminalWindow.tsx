@@ -16,9 +16,9 @@ export default function TerminalWindow() {
 
     const ws = new WebSocket("ws://localhost:4000")
 
-    ws.onopen = () => {
-      term.write("Connected to Personal OS\r\n")
-    }
+    // ws.onopen = () => {
+    //   term.write("Connected to Personal OS\r\n")
+    // }
 
     ws.onmessage = (event) => {
       term.write(event.data)

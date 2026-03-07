@@ -19,7 +19,6 @@ export default function Window({ title, children, onClose }: any) {
                 boxShadow: "0 4px 20px rgba(0,0,0,0.6)"
             }}
         >
-            {/* Title Bar */}
             <div
                 className="window-title"
                 style={{
@@ -47,7 +46,6 @@ export default function Window({ title, children, onClose }: any) {
                 </button>
             </div>
 
-            {/* Window Content */}
             <div style={{ flex: 1, overflow: "hidden" }}>
                 {children}
             </div>
