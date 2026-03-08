@@ -1,5 +1,5 @@
 import Window from "../desktop/Window"
-import { useEffect, useState } from "react"
+import { useEffect, useState, useRef } from "react"
 
 type Item = {
     name: string
@@ -9,6 +9,12 @@ type Item = {
 export default function FileManager({ close, path = "" }: any) {
     const [items, setItems] = useState<Item[]>([])
     const [currentPath, setCurrentPath] = useState(path || "")
+    const [contextMenu, setContextMenu] = useState<{
+        x: number
+        y: number
+        item: Item
+    } | null>(null)
+    const containerRef = useRef<HTMLDivElement>(null)
 
     const loadFiles = async (p = currentPath) => {
         const res = await fetch(`http://localhost:4000/api/files/list?path=${p}`)
@@ -59,6 +65,42 @@ export default function FileManager({ close, path = "" }: any) {
         loadFiles(currentPath)
     }
 
+    const renameItem = async (item: Item) => {
+
+        const newName = prompt("New name", item.name)
+        if (!newName || newName === item.name) return
+
+        await fetch("http://localhost:4000/api/files/rename", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                oldName: item.name,
+                newName,
+                path: currentPath
+            })
+        })
+
+        loadFiles(currentPath)
+        setContextMenu(null)
+    }
+
+    const deleteItem = async (item: Item) => {
+
+        if (!confirm(`Delete ${item.name}?`)) return
+
+        await fetch("http://localhost:4000/api/files/delete", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                name: item.name,
+                path: currentPath
+            })
+        })
+
+        loadFiles(currentPath)
+        setContextMenu(null)
+    }
+
     useEffect(() => {
         loadFiles(currentPath)
     }, [currentPath])
@@ -66,12 +108,14 @@ export default function FileManager({ close, path = "" }: any) {
     return (
         <Window title="File Manager" onClose={close}>
             <div
+                ref={containerRef}
                 style={{
                     height: "100%",
                     display: "flex",
                     flexDirection: "column",
                     background: "#1e1e1e"
                 }}
+                onClick={() => setContextMenu(null)}
             >
                 <div
                     style={{
@@ -108,6 +152,16 @@ export default function FileManager({ close, path = "" }: any) {
                         items.map((item, i) => (
                             <div
                                 key={i}
+                                onContextMenu={(e) => {
+                                    e.preventDefault()
+                                    e.stopPropagation()
+                                    const rect = containerRef.current?.getBoundingClientRect()
+                                    setContextMenu({
+                                        x: e.clientX - (rect?.left ?? 0) + 10,
+                                        y: e.clientY - (rect?.top ?? 0) + 50,
+                                        item
+                                    })
+                                }}
                                 onDoubleClick={() => {
                                     if (item.type === "folder") openFolder(item.name)
                                 }}
@@ -136,7 +190,36 @@ export default function FileManager({ close, path = "" }: any) {
                         ))
                     )}
                 </div>
+                {contextMenu && (
+                    <div
+                        onClick={(e) => e.stopPropagation()}
+                        style={{
+                            position: "absolute",
+                            top: contextMenu.y,
+                            left: contextMenu.x,
+                            background: "#222",
+                            border: "1px solid #555",
+                            padding: "6px",
+                            zIndex: 1000
+                        }}
+                    >
 
+                        <div
+                            style={{ padding: "6px 12px", cursor: "pointer" }}
+                            onClick={() => renameItem(contextMenu.item)}
+                        >
+                            Rename
+                        </div>
+
+                        <div
+                            style={{ padding: "6px 12px", cursor: "pointer", color: "#ff6666" }}
+                            onClick={() => deleteItem(contextMenu.item)}
+                        >
+                            Delete
+                        </div>
+
+                    </div>
+                )}
             </div>
         </Window>
     )
