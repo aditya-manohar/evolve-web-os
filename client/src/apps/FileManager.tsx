@@ -7,7 +7,6 @@ type Item = {
 }
 
 export default function FileManager({ close, path = "" }: any) {
-
     const [items, setItems] = useState<Item[]>([])
     const [currentPath, setCurrentPath] = useState(path || "")
 
@@ -88,7 +87,7 @@ export default function FileManager({ close, path = "" }: any) {
                     <button onClick={addFolder}>+ Folder</button>
 
                     <span style={{ marginLeft: "10px", opacity: 0.7 }}>
-                        /{path}
+                        /{currentPath}
                     </span>
                 </div>
                 <div

@@ -54,4 +54,36 @@ router.post("/create", (req, res) => {
     }
 })
 
+router.post("/rename", (req, res) => {
+    const { oldName, newName, path: dir } = req.body
+
+    const oldPath = path.join(WORKSPACE, dir || "", oldName)
+    const newPath = path.join(WORKSPACE, dir || "", newName)
+
+    try {
+        fs.renameSync(oldPath, newPath)
+        res.json({ success: true })
+    } catch {
+        res.status(500).json({ error: "Unable to rename item" })
+    }
+})
+
+router.post("/delete", (req, res) => {
+    const { name, path: dir } = req.body
+
+    const target = path.join(WORKSPACE, dir || "", name)
+
+    try {
+        if (fs.lstatSync(target).isDirectory()) {
+            fs.rmSync(target, { recursive: true, force: true })
+        } else {
+            fs.unlinkSync(target)
+        }
+
+        res.json({ success: true })
+    } catch {
+        res.status(500).json({ error: "Unable to delete item" })
+    }
+})
+
 export default router

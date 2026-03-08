@@ -4,10 +4,15 @@ import { apps } from "../apps/apps"
 export default function Desktop() {
 
   const [openApps, setOpenApps] = useState<any[]>([])
-  const [menu, setMenu] = useState<{ x: number, y: number } | null>(null)
   const [desktopItems, setDesktopItems] = useState<any[]>([])
   const [positions, setPositions] = useState<Record<string, { x: number, y: number }>>({})
   const [dragging, setDragging] = useState<string | null>(null)
+  const [contextMenu, setContextMenu] = useState<{
+    type: "desktop" | "icon"
+    x: number
+    y: number
+    item?: any
+  } | null>(null)
 
   const openApp = (id: string) => {
     if (!openApps.find(a => a.id === id)) {
@@ -29,6 +34,40 @@ export default function Desktop() {
     }
   }
 
+  const renameItem = async (item: any) => {
+    const newName = prompt("New name", item.name)
+    if (!newName || newName === item.name) return
+
+    await fetch("http://localhost:4000/api/files/rename", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        oldName: item.name,
+        newName,
+        path: "Desktop"
+      })
+    })
+
+    loadDesktop()
+    setContextMenu(null)
+  }
+
+  const deleteItem = async (item: any) => {
+    if (!confirm(`Delete ${item.name}?`)) return
+
+    await fetch("http://localhost:4000/api/files/delete", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        name: item.name,
+        path: "Desktop"
+      })
+    })
+
+    loadDesktop()
+    setContextMenu(null)
+  }
+
   const loadDesktop = async () => {
     const res = await fetch("http://localhost:4000/api/files/list?path=Desktop")
     const data = await res.json()
@@ -39,9 +78,21 @@ export default function Desktop() {
     loadDesktop()
   }, [])
 
+  useEffect(() => {
+    const closeMenu = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        setContextMenu(null)
+      }
+    }
+
+    window.addEventListener("keydown", closeMenu)
+    return () => window.removeEventListener("keydown", closeMenu)
+
+  }, [])
+
   const refreshDesktop = () => {
     loadDesktop()
-    setMenu(null)
+    setContextMenu(null)
   }
 
   const createFolder = async () => {
@@ -58,7 +109,7 @@ export default function Desktop() {
     })
 
     loadDesktop()
-    setMenu(null)
+    setContextMenu(null)
   }
 
   const createFile = async () => {
@@ -75,10 +126,11 @@ export default function Desktop() {
     })
 
     loadDesktop()
-    setMenu(null)
+    setContextMenu(null)
   }
 
   return (
+
     <div
       style={{
         height: "100%",
@@ -90,16 +142,20 @@ export default function Desktop() {
       }}
 
       onContextMenu={(e) => {
+        if (e.target !== e.currentTarget) return
         e.preventDefault()
-        setMenu({ x: e.clientX, y: e.clientY })
+        setContextMenu({
+          type: "desktop",
+          x: e.clientX,
+          y: e.clientY
+        })
+
       }}
-
-      onClick={() => setMenu(null)}
-
+      onClick={() => {
+        setContextMenu(null)
+      }}
       onMouseMove={(e) => {
-
         if (!dragging) return
-
         setPositions(prev => ({
           ...prev,
           [dragging]: {
@@ -113,13 +169,13 @@ export default function Desktop() {
       onMouseUp={() => setDragging(null)}
     >
 
-      {/* System Apps */}
       {apps.map((app, index) => {
 
         const defaultPos = getDefaultPosition(index)
         const pos = positions[app.id] || defaultPos
 
         return (
+
           <div
             key={app.id}
 
@@ -151,10 +207,13 @@ export default function Desktop() {
             </div>
 
           </div>
+
         )
+
       })}
 
       {desktopItems.map((item, index) => {
+
         const defaultPos = getDefaultPosition(index + apps.length)
         const pos = positions[item.name] || defaultPos
 
@@ -178,6 +237,16 @@ export default function Desktop() {
                 })
               }
             }}
+            onContextMenu={(e) => {
+              e.preventDefault()
+              e.stopPropagation()
+              setContextMenu({
+                type: "icon",
+                x: e.clientX,
+                y: e.clientY,
+                item
+              })
+            }}
             style={{
               position: "absolute",
               left: pos.x,
@@ -198,16 +267,13 @@ export default function Desktop() {
             <div style={{ fontSize: "12px", textAlign: "center" }}>
               {item.name}
             </div>
-
           </div>
         )
       })}
 
       {openApps.map((appInstance) => {
-
         const app = apps.find(a => a.id === appInstance.component)
         const Component = app!.component
-
         return (
           <Component
             key={appInstance.id}
@@ -215,43 +281,70 @@ export default function Desktop() {
             path={appInstance.path}
           />
         )
-
       })}
 
-      {menu && (
+      {contextMenu?.type === "desktop" && (
         <div
           style={{
             position: "absolute",
-            top: menu.y,
-            left: menu.x,
+            top: contextMenu.y,
+            left: contextMenu.x,
             background: "#222",
             border: "1px solid #555",
             padding: "6px",
             zIndex: 999
           }}
         >
-          <div
-            style={{ padding: "6px 12px", cursor: "pointer" }}
-            onClick={createFolder}
-          >
+
+          <div style={{ padding: "6px 12px", cursor: "pointer" }} onClick={createFolder}>
             New Folder
           </div>
-          <div
-            style={{ padding: "6px 12px", cursor: "pointer" }}
-            onClick={createFile}
-          >
+
+          <div style={{ padding: "6px 12px", cursor: "pointer" }} onClick={createFile}>
             New File
           </div>
-          <div
-            style={{ padding: "6px 12px", cursor: "pointer" }}
-            onClick={refreshDesktop}
-          >
+
+          <div style={{ padding: "6px 12px", cursor: "pointer" }} onClick={refreshDesktop}>
             Refresh
           </div>
 
         </div>
+
+      )}
+      {contextMenu?.type === "icon" && (<div
+        onClick={(e) => e.stopPropagation()}
+        onContextMenu={(e) => e.stopPropagation()}
+        style={{
+          position: "absolute",
+          top: contextMenu.y,
+          left: contextMenu.x,
+          background: "#222",
+          border: "1px solid #555",
+          padding: "6px",
+          zIndex: 1000
+        }}
+      >
+
+        <div
+          style={{ padding: "6px 12px", cursor: "pointer" }}
+          onClick={() => renameItem(contextMenu.item)}
+        >
+          Rename
+        </div>
+
+        <div
+          style={{ padding: "6px 12px", cursor: "pointer", color: "#ff6666" }}
+          onClick={() => deleteItem(contextMenu.item)}
+        >
+          Delete
+        </div>
+
+      </div>
+
       )}
 
     </div>
+
   )
+
 }
