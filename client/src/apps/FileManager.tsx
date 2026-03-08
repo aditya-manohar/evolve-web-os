@@ -6,32 +6,28 @@ type Item = {
     type: "file" | "folder"
 }
 
-export default function FileManager({ close }: any) {
+export default function FileManager({ close, path = "" }: any) {
 
     const [items, setItems] = useState<Item[]>([])
-    const [path, setPath] = useState("")
+    const [currentPath, setCurrentPath] = useState(path || "")
 
-    const loadFiles = async (targetPath = path) => {
-        const res = await fetch(`http://localhost:4000/api/files/list?path=${targetPath}`)
+    const loadFiles = async (p = currentPath) => {
+        const res = await fetch(`http://localhost:4000/api/files/list?path=${p}`)
         const data = await res.json()
         setItems(data)
     }
 
     const openFolder = (name: string) => {
-        const newPath = path ? `${path}/${name}` : name
-        setPath(newPath)
-        loadFiles(newPath)
+        const newPath = currentPath ? `${currentPath}/${name}` : name
+        setCurrentPath(newPath)
     }
 
     const goBack = () => {
-        if (!path) return
-
-        const parts = path.split("/")
+        if (!currentPath) return
+        const parts = currentPath.split("/")
         parts.pop()
         const newPath = parts.join("/")
-
-        setPath(newPath)
-        loadFiles(newPath)
+        setCurrentPath(newPath)
     }
 
     const addFolder = async () => {
@@ -43,10 +39,10 @@ export default function FileManager({ close }: any) {
             headers: {
                 "Content-Type": "application/json"
             },
-            body: JSON.stringify({ name, path })
+            body: JSON.stringify({ name, path: currentPath })
         })
 
-        loadFiles(path)
+        loadFiles(currentPath)
     }
 
     const addFile = async () => {
@@ -58,18 +54,18 @@ export default function FileManager({ close }: any) {
             headers: {
                 "Content-Type": "application/json"
             },
-            body: JSON.stringify({ name, path })
+            body: JSON.stringify({ name, path: currentPath })
         })
 
-        loadFiles(path)
+        loadFiles(currentPath)
     }
 
     useEffect(() => {
-        loadFiles("")
-    }, [])
+        loadFiles(currentPath)
+    }, [currentPath])
 
     return (
-        <Window title="Files" onClose={close}>
+        <Window title="File Manager" onClose={close}>
             <div
                 style={{
                     height: "100%",

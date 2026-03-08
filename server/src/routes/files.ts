@@ -7,32 +7,45 @@ const router = express.Router()
 const WORKSPACE = path.join(process.cwd(), "storage/workspace")
 
 router.get("/list", (req, res) => {
-    const dir = req.query.path || ""
-    const target = path.join(WORKSPACE, dir as string)
+
+    const dir = req.query.path as string || ""
+
+    const target = path.join(WORKSPACE, dir)
 
     try {
+
         const files = fs.readdirSync(target, { withFileTypes: true })
 
-        const result = files.map((f) => ({
+        const result = files.map(f => ({
             name: f.name,
             type: f.isDirectory() ? "folder" : "file"
         }))
 
         res.json(result)
+
     } catch (err) {
+
+        console.error(err)
+
         res.status(500).json({ error: "Unable to read directory" })
+
     }
+
 })
 
 router.post("/mkdir", (req, res) => {
     const { name, path: dir } = req.body
     const target = path.join(WORKSPACE, dir || "", name)
-
     try {
-        fs.mkdirSync(target)
+
+        fs.mkdirSync(target, { recursive: true })
         res.json({ success: true })
-    } catch {
-        res.status(500).json({ error: "Unable to create folder" })
+
+    } catch (err) {
+        console.error(err)
+        res.status(500).json({
+            error: "Unable to create folder"
+        })
     }
 })
 
