@@ -6,6 +6,8 @@ export default function Desktop() {
   const [openApps, setOpenApps] = useState<any[]>([])
   const [menu, setMenu] = useState<{ x: number, y: number } | null>(null)
   const [desktopItems, setDesktopItems] = useState<any[]>([])
+  const [positions, setPositions] = useState<Record<string, { x: number, y: number }>>({})
+  const [dragging, setDragging] = useState<string | null>(null)
 
   const openApp = (id: string) => {
     if (!openApps.find(a => a.id === id)) {
@@ -15,6 +17,16 @@ export default function Desktop() {
 
   const closeApp = (id: string) => {
     setOpenApps(openApps.filter(app => app.id !== id))
+  }
+
+  function getDefaultPosition(index: number) {
+    const col = Math.floor(index / 8)
+    const row = index % 8
+
+    return {
+      x: 20 + col * 100,
+      y: 20 + row * 100
+    }
   }
 
   const loadDesktop = async () => {
@@ -73,96 +85,123 @@ export default function Desktop() {
         width: "100%",
         position: "relative",
         overflow: "hidden",
-        display: "grid",
-        gridTemplateColumns: "repeat(auto-fill, 90px)",
-        gridAutoRows: "90px",
-        alignContent: "start",
-        gap: "12px",
         padding: "20px",
         color: "white"
       }}
+
       onContextMenu={(e) => {
         e.preventDefault()
         setMenu({ x: e.clientX, y: e.clientY })
       }}
+
       onClick={() => setMenu(null)}
+
+      onMouseMove={(e) => {
+
+        if (!dragging) return
+
+        setPositions(prev => ({
+          ...prev,
+          [dragging]: {
+            x: e.clientX - 40,
+            y: e.clientY - 40
+          }
+        }))
+
+      }}
+
+      onMouseUp={() => setDragging(null)}
     >
-      {apps.map((app) => (
-        <div
-          key={app.id}
-          style={{
-            width: "80px",
-            height: "80px",
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "center",
-            justifyContent: "center",
-            cursor: "pointer",
-            userSelect: "none"
-          }}
-          onDoubleClick={() => openApp(app.id)}
-        >
-          <div style={{ fontSize: "32px" }}>
-            {app.icon}
+
+      {/* System Apps */}
+      {apps.map((app, index) => {
+
+        const defaultPos = getDefaultPosition(index)
+        const pos = positions[app.id] || defaultPos
+
+        return (
+          <div
+            key={app.id}
+
+            onMouseDown={() => setDragging(app.id)}
+
+            style={{
+              position: "absolute",
+              left: pos.x,
+              top: pos.y,
+              width: "80px",
+              height: "80px",
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              justifyContent: "center",
+              cursor: "pointer",
+              userSelect: "none"
+            }}
+
+            onDoubleClick={() => openApp(app.id)}
+          >
+
+            <div style={{ fontSize: "32px" }}>
+              {app.icon}
+            </div>
+
+            <div style={{ fontSize: "12px", textAlign: "center" }}>
+              {app.name}
+            </div>
+
           </div>
+        )
+      })}
 
-          <div style={{ fontSize: "12px", textAlign: "center" }}>
-            {app.name}
+      {desktopItems.map((item, index) => {
+        const defaultPos = getDefaultPosition(index + apps.length)
+        const pos = positions[item.name] || defaultPos
+
+        return (
+          <div
+            key={item.name}
+            onMouseDown={() => setDragging(item.name)}
+            onDoubleClick={() => {
+              if (item.type === "folder") {
+                const id = `files-${item.name}`
+                setOpenApps(prev => {
+                  if (prev.find(a => a.id === id)) return prev
+                  return [
+                    ...prev,
+                    {
+                      id,
+                      component: "files",
+                      path: `Desktop/${item.name}`
+                    }
+                  ]
+                })
+              }
+            }}
+            style={{
+              position: "absolute",
+              left: pos.x,
+              top: pos.y,
+              width: "80px",
+              height: "80px",
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              justifyContent: "center",
+              cursor: "pointer"
+            }}
+          >
+            <div style={{ fontSize: "32px" }}>
+              {item.type === "folder" ? "📁" : "📄"}
+            </div>
+
+            <div style={{ fontSize: "12px", textAlign: "center" }}>
+              {item.name}
+            </div>
+
           </div>
-        </div>
-      ))}
-
-      {desktopItems.map((item) => (
-
-        <div
-          key={item.name}
-          style={{
-            width: "80px",
-            height: "80px",
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "center",
-            justifyContent: "center",
-            cursor: "pointer"
-          }}
-
-          onDoubleClick={() => {
-
-            if (item.type === "folder") {
-
-              const id = `files-${item.name}`
-
-              setOpenApps(prev => {
-
-                if (prev.find(a => a.id === id)) return prev
-
-                return [
-                  ...prev,
-                  {
-                    id,
-                    component: "files",
-                    path: `Desktop/${item.name}`
-                  }
-                ]
-
-              })
-
-            }
-
-          }}
-        >
-
-          <div style={{ fontSize: "32px" }}>
-            {item.type === "folder" ? "📁" : "📄"}
-          </div>
-
-          <div style={{ fontSize: "12px", textAlign: "center" }}>
-            {item.name}
-          </div>
-
-        </div>
-
-      ))}
+        )
+      })}
 
       {openApps.map((appInstance) => {
 
@@ -191,21 +230,18 @@ export default function Desktop() {
             zIndex: 999
           }}
         >
-
           <div
             style={{ padding: "6px 12px", cursor: "pointer" }}
             onClick={createFolder}
           >
             New Folder
           </div>
-
           <div
             style={{ padding: "6px 12px", cursor: "pointer" }}
             onClick={createFile}
           >
             New File
           </div>
-
           <div
             style={{ padding: "6px 12px", cursor: "pointer" }}
             onClick={refreshDesktop}
