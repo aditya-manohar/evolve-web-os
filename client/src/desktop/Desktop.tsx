@@ -5,7 +5,7 @@ export default function Desktop() {
 
   const [openApps, setOpenApps] = useState<any[]>([])
   const [zCounter, setZCounter] = useState(10)
-  const [selectedItem, setSelectedItem] = useState<string | null>(null)
+  const [selectedItems, setSelectedItems] = useState<string[]>([])
   const [desktopItems, setDesktopItems] = useState<any[]>([])
   const [positions, setPositions] = useState<Record<string, { x: number, y: number }>>({})
   const [dragging, setDragging] = useState<string | null>(null)
@@ -63,20 +63,24 @@ export default function Desktop() {
     setContextMenu(null)
   }
 
-  const deleteItem = async (item: any) => {
-    if (!confirm(`Delete ${item.name}?`)) return
-
-    await fetch("http://localhost:4000/api/files/delete", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        name: item.name,
-        path: "Desktop"
+  const deleteItems = async (names: string[]) => {
+    if (!confirm(`Delete ${names.length} item(s)?`)) return
+    for (const name of names) {
+      await fetch("http://localhost:4000/api/files/delete", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          name,
+          path: "Desktop"
+        })
       })
-    })
-
+    }
     loadDesktop()
+    setSelectedItems([])
     setContextMenu(null)
+
   }
 
   const loadDesktop = async () => {
@@ -137,6 +141,19 @@ export default function Desktop() {
     setContextMenu(null)
   }
 
+  const selectItem = (id: string, e: React.MouseEvent) => {
+    e.stopPropagation()
+    if (e.ctrlKey) {
+      setSelectedItems(prev =>
+        prev.includes(id)
+          ? prev.filter(i => i !== id)
+          : [...prev, id]
+      )
+    } else {
+      setSelectedItems([id])
+    }
+  }
+
   return (
 
     <div
@@ -159,7 +176,7 @@ export default function Desktop() {
       }}
       onClick={() => {
         setContextMenu(null)
-        setSelectedItem(null)
+        setSelectedItems([])
       }}
       onMouseMove={(e) => {
         if (!dragging) return
@@ -195,12 +212,14 @@ export default function Desktop() {
               justifyContent: "center",
               cursor: "pointer",
               userSelect: "none",
-              background: selectedItem === app.id ? "rgba(255,255,255,0.15)" : "transparent",
+              background: selectedItems.includes(app.id)
+                ? "rgba(255,255,255,0.15)"
+                : "transparent",
               borderRadius: "6px"
             }}
             onClick={(e) => {
               e.stopPropagation()
-              setSelectedItem(app.id)
+              selectItem(app.id, e)
             }}
             onDoubleClick={() => openApp(app.id)}
           >
@@ -243,7 +262,9 @@ export default function Desktop() {
             onContextMenu={(e) => {
               e.preventDefault()
               e.stopPropagation()
-              setSelectedItem(item.name)
+              if (!selectedItems.includes(item.name)) {
+                setSelectedItems([item.name])
+              }
               setContextMenu({
                 type: "icon",
                 x: e.clientX,
@@ -252,8 +273,7 @@ export default function Desktop() {
               })
             }}
             onClick={(e) => {
-              e.stopPropagation();
-              setSelectedItem(item.name)
+              selectItem(item.name, e)
             }}
             style={{
               position: "absolute",
@@ -266,7 +286,9 @@ export default function Desktop() {
               alignItems: "center",
               justifyContent: "center",
               cursor: "pointer",
-              background: selectedItem === item.name ? "rgba(255,255,255,0.15)" : "transparent",
+              background: selectedItems.includes(item.name)
+                ? "rgba(255,255,255,0.15)"
+                : "transparent",
               borderRadius: "6px"
             }}
           >
@@ -349,16 +371,26 @@ export default function Desktop() {
           zIndex: 1000
         }}
       >
-        <div
-          style={{ padding: "6px 12px", cursor: "pointer" }}
-          onClick={() => renameItem(contextMenu.item)}
-        >
-          Rename
-        </div>
+        {selectedItems.length === 1 && (
+          <div
+            style={{ padding: "6px 12px", cursor: "pointer" }}
+            onClick={() => renameItem(contextMenu.item)}
+          >
+            Rename
+          </div>
+        )}
         <div
           style={{ padding: "6px 12px", cursor: "pointer", color: "#ff6666" }}
-          onClick={() => deleteItem(contextMenu.item)}
-        >
+          onClick={() => {
+
+            const itemsToDelete =
+              selectedItems.length > 1
+                ? selectedItems
+                : [contextMenu.item.name]
+
+            deleteItems(itemsToDelete)
+
+          }}        >
           Delete
         </div>
       </div>

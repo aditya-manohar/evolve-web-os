@@ -9,7 +9,7 @@ type Item = {
 export default function FileManager({ close, path = "", zIndex, onFocus, minimize }: any) {
     const [items, setItems] = useState<Item[]>([])
     const [currentPath, setCurrentPath] = useState(path || "")
-    const [selectedItem, setSelectedItem] = useState<string | null>(null)
+    const [selectedItems, setSelectedItems] = useState<string[]>([])
     const [contextMenu, setContextMenu] = useState<{
         x: number
         y: number
@@ -66,6 +66,20 @@ export default function FileManager({ close, path = "", zIndex, onFocus, minimiz
         loadFiles(currentPath)
     }
 
+    const selectItem = (name: string, e: React.MouseEvent) => {
+        e.stopPropagation()
+        if (e.ctrlKey) {
+            setSelectedItems(prev =>
+                prev.includes(name)
+                    ? prev.filter(i => i !== name)
+                    : [...prev, name]
+            )
+        } else {
+            setSelectedItems([name])
+        }
+
+    }
+
     const renameItem = async (item: Item) => {
 
         const newName = prompt("New name", item.name)
@@ -85,20 +99,20 @@ export default function FileManager({ close, path = "", zIndex, onFocus, minimiz
         setContextMenu(null)
     }
 
-    const deleteItem = async (item: Item) => {
-
-        if (!confirm(`Delete ${item.name}?`)) return
-
-        await fetch("http://localhost:4000/api/files/delete", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-                name: item.name,
-                path: currentPath
+    const deleteItems = async (names: string[]) => {
+        if (!confirm(`Delete ${names.length} item(s)?`)) return
+        for (const name of names) {
+            await fetch("http://localhost:4000/api/files/delete", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    name,
+                    path: currentPath
+                })
             })
-        })
-
+        }
         loadFiles(currentPath)
+        setSelectedItems([])
         setContextMenu(null)
     }
 
@@ -117,7 +131,7 @@ export default function FileManager({ close, path = "", zIndex, onFocus, minimiz
                     background: "#1e1e1e"
                 }}
                 onClick={() => {
-                    setSelectedItem(null)
+                    setSelectedItems([])
                     setContextMenu(null)
                 }}
             >
@@ -159,7 +173,9 @@ export default function FileManager({ close, path = "", zIndex, onFocus, minimiz
                                 onContextMenu={(e) => {
                                     e.preventDefault()
                                     e.stopPropagation()
-                                    setSelectedItem(item.name)
+                                    if (!selectedItems.includes(item.name)) {
+                                        setSelectedItems([item.name])
+                                    }
                                     const rect = containerRef.current?.getBoundingClientRect()
                                     setContextMenu({
                                         x: e.clientX - (rect?.left ?? 0) + 10,
@@ -169,7 +185,7 @@ export default function FileManager({ close, path = "", zIndex, onFocus, minimiz
                                 }}
                                 onClick={(e) => {
                                     e.stopPropagation();
-                                    setSelectedItem(item.name)
+                                    selectItem(item.name, e)
                                 }}
                                 onDoubleClick={() => {
                                     if (item.type === "folder") openFolder(item.name)
@@ -180,7 +196,9 @@ export default function FileManager({ close, path = "", zIndex, onFocus, minimiz
                                     alignItems: "center",
                                     cursor: "pointer",
                                     textAlign: "center",
-                                    background: selectedItem === item.name ? "rgba(255,255,255,0.15)" : "transparent",
+                                    background: selectedItems.includes(item.name)
+                                        ? "rgba(255,255,255,0.15)"
+                                        : "transparent",
                                     borderRadius: "6px",
                                     padding: "4px"
                                 }}
@@ -215,14 +233,21 @@ export default function FileManager({ close, path = "", zIndex, onFocus, minimiz
                             zIndex: 2000
                         }}
                     >
-                        <div
-                            style={{ padding: "6px 12px", cursor: "pointer" }}
-                            onClick={() => renameItem(contextMenu.item)}>
-                            Rename
-                        </div>
+                        {selectedItems.length === 1 && (
+                            <div
+                                style={{ padding: "6px 12px", cursor: "pointer" }}
+                                onClick={() => renameItem(contextMenu.item)}
+                            >
+                                Rename
+                            </div>
+                        )}
                         <div
                             style={{ padding: "6px 12px", cursor: "pointer", color: "#ff6666" }}
-                            onClick={() => deleteItem(contextMenu.item)}>
+                            onClick={() => {
+                                const itemsToDelete = selectedItems.length > 1 ? selectedItems : [contextMenu.item.name]
+                                deleteItems(itemsToDelete)
+                            }
+                            }>
                             Delete
                         </div>
                     </div>
