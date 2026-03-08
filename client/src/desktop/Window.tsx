@@ -1,6 +1,6 @@
 import { Rnd } from "react-rnd"
 
-export default function Window({ title, children, onClose, zIndex, onFocus }: any) {
+export default function Window({ title, children, onClose, zIndex, onFocus, onMinimize = () => { } }: any) {
 
     return (
         <Rnd
@@ -37,17 +37,31 @@ export default function Window({ title, children, onClose, zIndex, onFocus }: an
             >
                 <span>{title}</span>
 
-                <button
-                    onClick={onClose}
-                    style={{
-                        background: "transparent",
-                        border: "none",
-                        color: "white",
-                        cursor: "pointer"
-                    }}
-                >
-                    ✕
-                </button>
+                <div style={{ display: "flex", gap: "8px" }}>
+                    <button
+                        onClick={onMinimize}
+                        style={{
+                            background: "transparent",
+                            border: "none",
+                            color: "white",
+                            cursor: "pointer"
+                        }}
+                    >
+                        _
+                    </button>
+
+                    <button
+                        onClick={onClose}
+                        style={{
+                            background: "transparent",
+                            border: "none",
+                            color: "white",
+                            cursor: "pointer"
+                        }}
+                    >
+                        ✕
+                    </button>
+                </div>
 
             </div>
 

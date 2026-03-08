@@ -14,6 +14,7 @@ export default function Desktop() {
     y: number
     item?: any
   } | null>(null)
+  const [minimizedApps, setMinimizedApps] = useState<string[]>([])
 
   const openApp = (id: string) => {
     if (!openApps.find(a => a.id === id)) {
@@ -23,6 +24,14 @@ export default function Desktop() {
 
   const closeApp = (id: string) => {
     setOpenApps(openApps.filter(app => app.id !== id))
+  }
+
+  const minimizeApp = (id: string) => {
+    setMinimizedApps(prev => [...prev, id])
+  }
+
+  const restoreApp = (id: string) => {
+    setMinimizedApps(prev => prev.filter(app => app !== id))
   }
 
   function getDefaultPosition(index: number) {
@@ -272,34 +281,36 @@ export default function Desktop() {
         )
       })}
 
-      {openApps.map((appInstance) => {
+      {openApps
+        .filter(app => !minimizedApps.includes(app.id))
+        .map((appInstance) => {
+          const app = apps.find(a => a.id === appInstance.component)
+          const Component = app!.component
 
-        const app = apps.find(a => a.id === appInstance.component)
-        const Component = app!.component
+          const focusWindow = () => {
+            setZCounter(prev => prev + 1)
 
-        const focusWindow = () => {
-          setZCounter(prev => prev + 1)
-
-          setOpenApps(prev =>
-            prev.map(w =>
-              w.id === appInstance.id
-                ? { ...w, zIndex: zCounter + 1 }
-                : w
+            setOpenApps(prev =>
+              prev.map(w =>
+                w.id === appInstance.id
+                  ? { ...w, zIndex: zCounter + 1 }
+                  : w
+              )
             )
+          }
+
+          return (
+            <Component
+              key={appInstance.id}
+              close={() => closeApp(appInstance.id)}
+              minimize={() => minimizeApp(appInstance.id)}
+              path={appInstance.path}
+              zIndex={appInstance.zIndex || 10}
+              onFocus={focusWindow}
+            />
           )
-        }
 
-        return (
-          <Component
-            key={appInstance.id}
-            close={() => closeApp(appInstance.id)}
-            path={appInstance.path}
-            zIndex={appInstance.zIndex || 10}
-            onFocus={focusWindow}
-          />
-        )
-
-      })}
+        })}
 
       {contextMenu?.type === "desktop" && (
         <div
@@ -360,7 +371,45 @@ export default function Desktop() {
       </div>
 
       )}
+      <div
+        style={{
+          position: "fixed",
+          bottom: 0,
+          left: 0,
+          width: "100%",
+          height: "40px",
+          background: "#111",
+          borderTop: "1px solid #444",
+          display: "flex",
+          alignItems: "center",
+          gap: "10px",
+          padding: "0 10px"
+        }}
+      >
 
+        {minimizedApps.map(id => {
+
+          const app = openApps.find(a => a.id === id)
+          const meta = apps.find(a => a.id === app.component)
+
+          return (
+            <div
+              key={id}
+              onClick={() => restoreApp(id)}
+              style={{
+                padding: "4px 10px",
+                background: "#222",
+                border: "1px solid #555",
+                cursor: "pointer"
+              }}
+            >
+              {meta?.name}
+            </div>
+          )
+
+        })}
+
+      </div>
     </div>
 
   )
