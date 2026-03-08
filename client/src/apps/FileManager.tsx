@@ -6,7 +6,7 @@ type Item = {
     type: "file" | "folder"
 }
 
-export default function FileManager({ close, path = "" }: any) {
+export default function FileManager({ close, path = "", zIndex, onFocus }: any) {
     const [items, setItems] = useState<Item[]>([])
     const [currentPath, setCurrentPath] = useState(path || "")
     const [contextMenu, setContextMenu] = useState<{
@@ -106,7 +106,7 @@ export default function FileManager({ close, path = "" }: any) {
     }, [currentPath])
 
     return (
-        <Window title="File Manager" onClose={close}>
+        <Window title="File Manager" onClose={close} zIndex={zIndex} onFocus={onFocus}>
             <div
                 ref={containerRef}
                 style={{

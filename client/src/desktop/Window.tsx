@@ -1,6 +1,7 @@
 import { Rnd } from "react-rnd"
 
-export default function Window({ title, children, onClose }: any) {
+export default function Window({ title, children, onClose, zIndex, onFocus }: any) {
+
     return (
         <Rnd
             default={{
@@ -11,14 +12,17 @@ export default function Window({ title, children, onClose }: any) {
             }}
             bounds="window"
             dragHandleClassName="window-title"
+            onMouseDown={onFocus}
             style={{
                 border: "1px solid #555",
                 background: "black",
                 display: "flex",
                 flexDirection: "column",
-                boxShadow: "0 4px 20px rgba(0,0,0,0.6)"
+                boxShadow: "0 4px 20px rgba(0,0,0,0.6)",
+                zIndex: zIndex
             }}
         >
+
             <div
                 className="window-title"
                 style={{
@@ -44,11 +48,13 @@ export default function Window({ title, children, onClose }: any) {
                 >
                     ✕
                 </button>
+
             </div>
 
             <div style={{ flex: 1, overflow: "hidden" }}>
                 {children}
             </div>
+
         </Rnd>
     )
 }

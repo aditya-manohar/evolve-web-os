@@ -4,6 +4,7 @@ import { apps } from "../apps/apps"
 export default function Desktop() {
 
   const [openApps, setOpenApps] = useState<any[]>([])
+  const [zCounter, setZCounter] = useState(10)
   const [desktopItems, setDesktopItems] = useState<any[]>([])
   const [positions, setPositions] = useState<Record<string, { x: number, y: number }>>({})
   const [dragging, setDragging] = useState<string | null>(null)
@@ -272,15 +273,32 @@ export default function Desktop() {
       })}
 
       {openApps.map((appInstance) => {
+
         const app = apps.find(a => a.id === appInstance.component)
         const Component = app!.component
+
+        const focusWindow = () => {
+          setZCounter(prev => prev + 1)
+
+          setOpenApps(prev =>
+            prev.map(w =>
+              w.id === appInstance.id
+                ? { ...w, zIndex: zCounter + 1 }
+                : w
+            )
+          )
+        }
+
         return (
           <Component
             key={appInstance.id}
             close={() => closeApp(appInstance.id)}
             path={appInstance.path}
+            zIndex={appInstance.zIndex || 10}
+            onFocus={focusWindow}
           />
         )
+
       })}
 
       {contextMenu?.type === "desktop" && (
