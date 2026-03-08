@@ -5,6 +5,7 @@ export default function Desktop() {
 
   const [openApps, setOpenApps] = useState<any[]>([])
   const [zCounter, setZCounter] = useState(10)
+  const [selectedItem, setSelectedItem] = useState<string | null>(null)
   const [desktopItems, setDesktopItems] = useState<any[]>([])
   const [positions, setPositions] = useState<Record<string, { x: number, y: number }>>({})
   const [dragging, setDragging] = useState<string | null>(null)
@@ -94,7 +95,6 @@ export default function Desktop() {
         setContextMenu(null)
       }
     }
-
     window.addEventListener("keydown", closeMenu)
     return () => window.removeEventListener("keydown", closeMenu)
 
@@ -117,7 +117,6 @@ export default function Desktop() {
         path: "Desktop"
       })
     })
-
     loadDesktop()
     setContextMenu(null)
   }
@@ -134,7 +133,6 @@ export default function Desktop() {
         path: "Desktop"
       })
     })
-
     loadDesktop()
     setContextMenu(null)
   }
@@ -150,7 +148,6 @@ export default function Desktop() {
         padding: "20px",
         color: "white"
       }}
-
       onContextMenu={(e) => {
         if (e.target !== e.currentTarget) return
         e.preventDefault()
@@ -159,10 +156,10 @@ export default function Desktop() {
           x: e.clientX,
           y: e.clientY
         })
-
       }}
       onClick={() => {
         setContextMenu(null)
+        setSelectedItem(null)
       }}
       onMouseMove={(e) => {
         if (!dragging) return
@@ -173,9 +170,7 @@ export default function Desktop() {
             y: e.clientY - 40
           }
         }))
-
       }}
-
       onMouseUp={() => setDragging(null)}
     >
 
@@ -185,12 +180,9 @@ export default function Desktop() {
         const pos = positions[app.id] || defaultPos
 
         return (
-
           <div
             key={app.id}
-
             onMouseDown={() => setDragging(app.id)}
-
             style={{
               position: "absolute",
               left: pos.x,
@@ -202,12 +194,16 @@ export default function Desktop() {
               alignItems: "center",
               justifyContent: "center",
               cursor: "pointer",
-              userSelect: "none"
+              userSelect: "none",
+              background: selectedItem === app.id ? "rgba(255,255,255,0.15)" : "transparent",
+              borderRadius: "6px"
             }}
-
+            onClick={(e) => {
+              e.stopPropagation()
+              setSelectedItem(app.id)
+            }}
             onDoubleClick={() => openApp(app.id)}
           >
-
             <div style={{ fontSize: "32px" }}>
               {app.icon}
             </div>
@@ -215,11 +211,8 @@ export default function Desktop() {
             <div style={{ fontSize: "12px", textAlign: "center" }}>
               {app.name}
             </div>
-
           </div>
-
         )
-
       })}
 
       {desktopItems.map((item, index) => {
@@ -250,12 +243,17 @@ export default function Desktop() {
             onContextMenu={(e) => {
               e.preventDefault()
               e.stopPropagation()
+              setSelectedItem(item.name)
               setContextMenu({
                 type: "icon",
                 x: e.clientX,
                 y: e.clientY,
                 item
               })
+            }}
+            onClick={(e) => {
+              e.stopPropagation();
+              setSelectedItem(item.name)
             }}
             style={{
               position: "absolute",
@@ -267,7 +265,9 @@ export default function Desktop() {
               flexDirection: "column",
               alignItems: "center",
               justifyContent: "center",
-              cursor: "pointer"
+              cursor: "pointer",
+              background: selectedItem === item.name ? "rgba(255,255,255,0.15)" : "transparent",
+              borderRadius: "6px"
             }}
           >
             <div style={{ fontSize: "32px" }}>
@@ -298,7 +298,6 @@ export default function Desktop() {
               )
             )
           }
-
           return (
             <Component
               key={appInstance.id}
@@ -324,7 +323,6 @@ export default function Desktop() {
             zIndex: 999
           }}
         >
-
           <div style={{ padding: "6px 12px", cursor: "pointer" }} onClick={createFolder}>
             New Folder
           </div>
@@ -336,9 +334,7 @@ export default function Desktop() {
           <div style={{ padding: "6px 12px", cursor: "pointer" }} onClick={refreshDesktop}>
             Refresh
           </div>
-
         </div>
-
       )}
       {contextMenu?.type === "icon" && (<div
         onClick={(e) => e.stopPropagation()}
@@ -353,23 +349,19 @@ export default function Desktop() {
           zIndex: 1000
         }}
       >
-
         <div
           style={{ padding: "6px 12px", cursor: "pointer" }}
           onClick={() => renameItem(contextMenu.item)}
         >
           Rename
         </div>
-
         <div
           style={{ padding: "6px 12px", cursor: "pointer", color: "#ff6666" }}
           onClick={() => deleteItem(contextMenu.item)}
         >
           Delete
         </div>
-
       </div>
-
       )}
       <div
         style={{
@@ -388,10 +380,8 @@ export default function Desktop() {
       >
 
         {minimizedApps.map(id => {
-
           const app = openApps.find(a => a.id === id)
           const meta = apps.find(a => a.id === app.component)
-
           return (
             <div
               key={id}
@@ -406,12 +396,8 @@ export default function Desktop() {
               {meta?.name}
             </div>
           )
-
         })}
-
       </div>
     </div>
-
   )
-
 }

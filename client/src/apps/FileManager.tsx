@@ -9,6 +9,7 @@ type Item = {
 export default function FileManager({ close, path = "", zIndex, onFocus, minimize }: any) {
     const [items, setItems] = useState<Item[]>([])
     const [currentPath, setCurrentPath] = useState(path || "")
+    const [selectedItem, setSelectedItem] = useState<string | null>(null)
     const [contextMenu, setContextMenu] = useState<{
         x: number
         y: number
@@ -115,7 +116,10 @@ export default function FileManager({ close, path = "", zIndex, onFocus, minimiz
                     flexDirection: "column",
                     background: "#1e1e1e"
                 }}
-                onClick={() => setContextMenu(null)}
+                onClick={() => {
+                    setSelectedItem(null)
+                    setContextMenu(null)
+                }}
             >
                 <div
                     style={{
@@ -155,12 +159,17 @@ export default function FileManager({ close, path = "", zIndex, onFocus, minimiz
                                 onContextMenu={(e) => {
                                     e.preventDefault()
                                     e.stopPropagation()
+                                    setSelectedItem(item.name)
                                     const rect = containerRef.current?.getBoundingClientRect()
                                     setContextMenu({
                                         x: e.clientX - (rect?.left ?? 0) + 10,
                                         y: e.clientY - (rect?.top ?? 0) + 50,
                                         item
                                     })
+                                }}
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    setSelectedItem(item.name)
                                 }}
                                 onDoubleClick={() => {
                                     if (item.type === "folder") openFolder(item.name)
@@ -170,7 +179,10 @@ export default function FileManager({ close, path = "", zIndex, onFocus, minimiz
                                     flexDirection: "column",
                                     alignItems: "center",
                                     cursor: "pointer",
-                                    textAlign: "center"
+                                    textAlign: "center",
+                                    background: selectedItem === item.name ? "rgba(255,255,255,0.15)" : "transparent",
+                                    borderRadius: "6px",
+                                    padding: "4px"
                                 }}
                             >
                                 <div style={{ fontSize: "32px" }}>
@@ -200,24 +212,19 @@ export default function FileManager({ close, path = "", zIndex, onFocus, minimiz
                             background: "#222",
                             border: "1px solid #555",
                             padding: "6px",
-                            zIndex: 1000
+                            zIndex: 2000
                         }}
                     >
-
                         <div
                             style={{ padding: "6px 12px", cursor: "pointer" }}
-                            onClick={() => renameItem(contextMenu.item)}
-                        >
+                            onClick={() => renameItem(contextMenu.item)}>
                             Rename
                         </div>
-
                         <div
                             style={{ padding: "6px 12px", cursor: "pointer", color: "#ff6666" }}
-                            onClick={() => deleteItem(contextMenu.item)}
-                        >
+                            onClick={() => deleteItem(contextMenu.item)}>
                             Delete
                         </div>
-
                     </div>
                 )}
             </div>
