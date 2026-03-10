@@ -1,15 +1,18 @@
 import Window from "../desktop/Window"
 import { useEffect, useState, useRef } from "react"
+import { useWindowManager } from "../store/windowManager"
+import { setKeyboardHandler } from "../core/keyboardManager"
 
 type Item = {
     name: string
     type: "file" | "folder"
 }
 
-export default function FileManager({ close, path = "", zIndex, onFocus, minimize }: any) {
+export default function FileManager({ close, path = "", zIndex, onFocus, minimize, windowId }: any) {
     const [items, setItems] = useState<Item[]>([])
     const [currentPath, setCurrentPath] = useState(path || "")
     const [selectedItems, setSelectedItems] = useState<string[]>([])
+    const activeWindow = useWindowManager(s => s.activeWindow)
     const [contextMenu, setContextMenu] = useState<{
         x: number
         y: number
@@ -100,41 +103,101 @@ export default function FileManager({ close, path = "", zIndex, onFocus, minimiz
     }
 
     const deleteItems = async (names: string[]) => {
+
         if (!confirm(`Delete ${names.length} item(s)?`)) return
-        for (const name of names) {
-            await fetch("http://localhost:4000/api/files/delete", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    name,
-                    path: currentPath
+
+        await Promise.all(
+            names.map(name =>
+                fetch("http://localhost:4000/api/files/delete", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        name,
+                        path: currentPath
+                    })
                 })
-            })
-        }
+            )
+        )
+
         loadFiles(currentPath)
         setSelectedItems([])
         setContextMenu(null)
+
     }
 
     useEffect(() => {
         loadFiles(currentPath)
     }, [currentPath])
 
+    useEffect(() => {
+
+        if (activeWindow !== windowId) return
+
+        const handler = (e: KeyboardEvent) => {
+
+            if (e.ctrlKey && e.key.toLowerCase() === "a") {
+                e.preventDefault()
+
+                const all = items.map(i => i.name)
+                setSelectedItems(all)
+            }
+
+            if (e.key === "Delete" && selectedItems.length > 0) {
+                deleteItems(selectedItems)
+            }
+
+        }
+
+        setKeyboardHandler(handler)
+
+        return () => setKeyboardHandler(null)
+
+    }, [activeWindow, items])
+
+    // useEffect(() => {
+
+    //     const handleKeys = (e: KeyboardEvent) => {
+
+    //         if (activeWindow !== windowId) return
+
+    //         if (e.ctrlKey && e.key.toLowerCase() === "a") {
+    //             e.preventDefault()
+    //             e.stopPropagation()
+    //             setSelectedItems(items.map(i => i.name))
+    //         }
+
+    //         if (e.key === "Delete" && selectedItems.length > 0) {
+    //             deleteItems(selectedItems)
+    //         }
+
+    //     }
+
+    //     window.addEventListener("keydown", handleKeys)
+    //     return () => window.removeEventListener("keydown", handleKeys)
+
+    // }, [activeWindow, items, selectedItems, windowId])
+
     return (
-        <Window title="File Manager" onClose={close} zIndex={zIndex} onFocus={onFocus} onMinimize={minimize}>
-            <div
-                ref={containerRef}
-                style={{
-                    height: "100%",
-                    display: "flex",
-                    flexDirection: "column",
-                    background: "#1e1e1e"
-                }}
-                onClick={() => {
-                    setSelectedItems([])
-                    setContextMenu(null)
-                }}
-            >
+        <Window
+            windowId={windowId}
+            title="File Manager"
+            onClose={close}
+            zIndex={zIndex}
+            onFocus={onFocus}
+            onMinimize={minimize}
+        >            <div
+            ref={containerRef}
+            style={{
+                height: "100%",
+                display: "flex",
+                flexDirection: "column",
+                background: "#1e1e1e"
+            }}
+            onClick={() => {
+                setSelectedItems([])
+                setContextMenu(null)
+            }}
+        >
                 <div
                     style={{
                         padding: "8px",

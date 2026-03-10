@@ -1,5 +1,7 @@
 import { useState, useEffect } from "react"
 import { apps } from "../apps/apps"
+import { useWindowManager } from "../store/windowManager"
+import { setKeyboardHandler } from "../core/keyboardManager"
 
 export default function Desktop() {
 
@@ -16,23 +18,41 @@ export default function Desktop() {
     item?: any
   } | null>(null)
   const [minimizedApps, setMinimizedApps] = useState<string[]>([])
-
+  const activeWindow = useWindowManager(s => s.activeWindow)
+  const setActiveWindow = useWindowManager(s => s.setActiveWindow)
   const openApp = (id: string) => {
+
     if (!openApps.find(a => a.id === id)) {
       setOpenApps([...openApps, { id, component: id }])
     }
+
+    setActiveWindow(id)
+
   }
 
   const closeApp = (id: string) => {
-    setOpenApps(openApps.filter(app => app.id !== id))
+
+    setOpenApps(prev => prev.filter(app => app.id !== id))
+
+    if (activeWindow === id) {
+      setActiveWindow(null)
+    }
+
   }
 
   const minimizeApp = (id: string) => {
     setMinimizedApps(prev => [...prev, id])
+
+    if (activeWindow === id) {
+      setActiveWindow(null)
+    }
   }
 
   const restoreApp = (id: string) => {
+
     setMinimizedApps(prev => prev.filter(app => app !== id))
+    setActiveWindow(id)
+
   }
 
   function getDefaultPosition(index: number) {
@@ -104,6 +124,73 @@ export default function Desktop() {
 
   }, [])
 
+
+  useEffect(() => {
+
+    if (activeWindow !== null) {
+      setKeyboardHandler(null)
+      return
+    }
+
+    const handler = (e: KeyboardEvent) => {
+
+      if (e.ctrlKey && e.key.toLowerCase() === "a") {
+
+        e.preventDefault()
+
+        const allItems = [
+          ...apps.map(a => a.id),
+          ...desktopItems.map(i => i.name)
+        ]
+
+        setSelectedItems(allItems)
+
+      }
+
+      if (e.key === "Delete" && selectedItems.length > 0) {
+        deleteItems(selectedItems)
+      }
+
+    }
+
+    setKeyboardHandler(handler)
+
+    return () => setKeyboardHandler(null)
+
+  }, [activeWindow, desktopItems, selectedItems])
+
+  // useEffect(() => {
+
+  //   const handleKeys = (e: KeyboardEvent) => {
+
+  //     // Desktop only reacts when no window is active
+  //     if (activeWindow !== null) return
+
+  //     if (e.ctrlKey && e.key.toLowerCase() === "a") {
+
+  //       e.preventDefault()
+
+  //       const allItems = [
+  //         ...apps.map(a => a.id),
+  //         ...desktopItems.map(i => i.name)
+  //       ]
+
+  //       setSelectedItems(allItems)
+
+  //     }
+
+  //     if (e.key === "Delete" && selectedItems.length > 0) {
+  //       deleteItems(selectedItems)
+  //     }
+
+  //   }
+
+  //   window.addEventListener("keydown", handleKeys)
+
+  //   return () => window.removeEventListener("keydown", handleKeys)
+
+  // }, [activeWindow, desktopItems, selectedItems])
+
   const refreshDesktop = () => {
     loadDesktop()
     setContextMenu(null)
@@ -155,7 +242,6 @@ export default function Desktop() {
   }
 
   return (
-
     <div
       style={{
         height: "100%",
@@ -328,6 +414,7 @@ export default function Desktop() {
               path={appInstance.path}
               zIndex={appInstance.zIndex || 10}
               onFocus={focusWindow}
+              windowId={appInstance.id}
             />
           )
 
@@ -433,3 +520,4 @@ export default function Desktop() {
     </div>
   )
 }
+

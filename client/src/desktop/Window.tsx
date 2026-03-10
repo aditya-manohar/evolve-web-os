@@ -1,6 +1,17 @@
 import { Rnd } from "react-rnd"
+import { useWindowManager } from "../store/windowManager"
 
-export default function Window({ title, children, onClose, zIndex, onFocus, onMinimize = () => { } }: any) {
+export default function Window({
+    windowId,
+    title,
+    children,
+    onClose,
+    zIndex,
+    onFocus,
+    onMinimize = () => { }
+}: any) {
+
+    const setActiveWindow = useWindowManager(state => state.setActiveWindow)
 
     return (
         <Rnd
@@ -12,7 +23,10 @@ export default function Window({ title, children, onClose, zIndex, onFocus, onMi
             }}
             bounds="window"
             dragHandleClassName="window-title"
-            onMouseDown={onFocus}
+            onMouseDown={() => {
+                setActiveWindow(windowId)
+                onFocus?.()
+            }}
             style={{
                 border: "1px solid #555",
                 background: "black",
@@ -62,7 +76,6 @@ export default function Window({ title, children, onClose, zIndex, onFocus, onMi
                         ✕
                     </button>
                 </div>
-
             </div>
 
             <div style={{ flex: 1, overflow: "hidden" }}>
