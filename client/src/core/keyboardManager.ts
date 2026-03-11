@@ -1,8 +1,7 @@
-// core/keyboardManager.ts
 type KeyboardHandler = {
     id: string;
     priority: number;
-    handler: (e: KeyboardEvent) => boolean;
+    handler: (e: KeyboardEvent) => boolean; // Return true if handled, false to continue
 };
 
 class KeyboardManager {
@@ -24,7 +23,7 @@ class KeyboardManager {
     }
 
     handleKeyDown = (e: KeyboardEvent) => {
-        if (this.isProcessing) return;
+        if (this.isProcessing) return false;
 
         this.isProcessing = true;
 
@@ -34,12 +33,15 @@ class KeyboardManager {
                 if (handler(e)) {
                     e.preventDefault();
                     e.stopPropagation();
+                    this.isProcessing = false;
                     return true;
                 }
             }
         } finally {
             this.isProcessing = false;
         }
+
+        // If no handler claimed the event, let it propagate naturally
         return false;
     }
 
@@ -50,7 +52,7 @@ class KeyboardManager {
 
 export const keyboardManager = new KeyboardManager();
 
-// Initialize global listener
+// Initialize global listener - use bubble phase instead of capture
 if (typeof window !== 'undefined') {
-    window.addEventListener('keydown', keyboardManager.handleKeyDown, true);
+    window.addEventListener('keydown', keyboardManager.handleKeyDown, false);
 }

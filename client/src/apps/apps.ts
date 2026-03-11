@@ -10,7 +10,7 @@ export const apps = [
   },
   {
     id: "files",
-    name: "Files",
+    name: "File Manager",
     icon: "📁",
     component: FileManager
   }

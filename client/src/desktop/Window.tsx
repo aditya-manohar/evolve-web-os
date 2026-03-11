@@ -14,7 +14,6 @@ export default function Window({
     const setActiveWindow = useWindowManager(state => state.setActiveWindow)
     const registerWindow = useWindowManager(state => state.registerWindow)
     const unregisterWindow = useWindowManager(state => state.unregisterWindow)
-    const getNextZIndex = useWindowManager(state => state.getNextZIndex)
     const [isMaximized, setIsMaximized] = useState(false)
     const [size, setSize] = useState({ width: 700, height: 400 })
     const [position, setPosition] = useState({ x: 120, y: 80 })
@@ -35,10 +34,7 @@ export default function Window({
             setSize(previousState.size)
             setIsMaximized(false)
         } else {
-            setPreviousState({
-                position,
-                size
-            })
+            setPreviousState({ position, size })
             setPosition({ x: 0, y: 0 })
             setSize({
                 width: window.innerWidth,
@@ -48,34 +44,20 @@ export default function Window({
         }
     }
 
-    const handleDragStart = () => {
-        handleFocus()
-    }
-
-    const handleDragStop = (e: any, d: any) => {
-        setPosition({ x: d.x, y: d.y })
-    }
-
-    const handleResizeStart = () => {
-        handleFocus()
-    }
-
-    const handleResizeStop = (e: any, direction: any, ref: any, delta: any, position: any) => {
-        setSize({
-            width: ref.style.width ? parseInt(ref.style.width) : size.width,
-            height: ref.style.height ? parseInt(ref.style.height) : size.height
-        })
-        setPosition(position)
-    }
-
     return (
         <Rnd
             size={{ width: size.width, height: size.height }}
             position={{ x: position.x, y: position.y }}
-            onDragStart={handleDragStart}
-            onDragStop={handleDragStop}
-            onResizeStart={handleResizeStart}
-            onResizeStop={handleResizeStop}
+            onDragStart={handleFocus}
+            onDragStop={(e, d) => setPosition({ x: d.x, y: d.y })}
+            onResizeStart={handleFocus}
+            onResizeStop={(e, direction, ref, delta, position) => {
+                setSize({
+                    width: parseInt(ref.style.width),
+                    height: parseInt(ref.style.height)
+                })
+                setPosition(position)
+            }}
             minWidth={300}
             minHeight={200}
             bounds="window"
@@ -108,17 +90,11 @@ export default function Window({
                 }}
                 onDoubleClick={handleMaximize}
             >
-                <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                    <span style={{ fontSize: "14px", fontWeight: 500 }}>{title}</span>
-                </div>
-
-                <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
-
-                    <WindowButton onClick={onMinimize}>
-                        _
-                    </WindowButton>
+                <span style={{ fontSize: "14px", fontWeight: 500 }}>{title}</span>
+                <div style={{ display: "flex", gap: "8px" }}>
+                    <WindowButton onClick={onMinimize}>_</WindowButton>
                     <WindowButton onClick={handleMaximize}>
-                        {isMaximized ? "□" : "□"}
+                        {isMaximized ? "❐" : "□"}
                     </WindowButton>
                     <WindowButton onClick={onClose} style={{ color: "#ff5f56" }}>
                         ✕
@@ -127,9 +103,10 @@ export default function Window({
             </div>
             <div style={{
                 flex: 1,
-                overflow: "auto",
-                background: "#1e1e1e",
-                position: "relative"
+                display: "flex",
+                flexDirection: "column",
+                minHeight: 0,
+                background: "#1e1e1e"
             }}>
                 {children}
             </div>
@@ -148,7 +125,6 @@ const WindowButton = ({ children, onClick, style }: any) => (
             fontSize: "16px",
             padding: "4px 8px",
             borderRadius: "4px",
-            transition: "all 0.1s ease",
             ...style
         }}
         onMouseEnter={(e) => {

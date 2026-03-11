@@ -1,14 +1,14 @@
+// apps/TerminalApp.tsx
 import Window from "../desktop/Window"
 import TerminalWindow from "../components/TerminalWindow"
 
-export default function TerminalApp({ close, zIndex, onFocus, minimize }: any) {
-
+export default function TerminalApp({ windowId, close, zIndex, minimize }: any) {
   return (
     <Window
+      windowId={windowId}
       title="Terminal"
       onClose={close}
       zIndex={zIndex}
-      onFocus={onFocus}
       onMinimize={minimize}
     >
       <TerminalWindow />

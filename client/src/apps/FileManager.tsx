@@ -16,7 +16,7 @@ export default function FileManager({ windowId, close, path = "", zIndex, minimi
     const [contextMenu, setContextMenu] = useState<{
         x: number
         y: number
-        item: Item
+        item?: Item  // Made optional for background context menu
     } | null>(null)
 
     const containerRef = useRef<HTMLDivElement>(null)
@@ -61,6 +61,7 @@ export default function FileManager({ windowId, close, path = "", zIndex, minimi
         })
 
         loadFiles(currentPath)
+        setContextMenu(null)
     }
 
     const addFile = async () => {
@@ -74,6 +75,7 @@ export default function FileManager({ windowId, close, path = "", zIndex, minimi
         })
 
         loadFiles(currentPath)
+        setContextMenu(null)
     }
 
     const selectItem = (name: string, e: React.MouseEvent) => {
@@ -133,7 +135,7 @@ export default function FileManager({ windowId, close, path = "", zIndex, minimi
     useKeyboard({
         id: `filemanager-${windowId}`,
         priority: isActive ? 50 : 0,
-        windowId: windowId, // Only handle keys when this window is active
+        windowId: windowId,
         keys: [
             {
                 key: 'a',
@@ -187,6 +189,44 @@ export default function FileManager({ windowId, close, path = "", zIndex, minimi
         ]
     })
 
+    const folders = items.filter(item => item.type === "folder")
+    const files = items.filter(item => item.type === "file")
+
+    // Handle context menu positioning
+    const handleContextMenu = (e: React.MouseEvent, item?: Item) => {
+        e.preventDefault()
+        e.stopPropagation()
+
+        const rect = containerRef.current?.getBoundingClientRect()
+        if (!rect) return
+
+        // Calculate position relative to container
+        let x = e.clientX - rect.left
+        let y = e.clientY - rect.top
+
+        // Get window dimensions
+        const windowWidth = rect.width
+        const windowHeight = rect.height
+
+        // Context menu dimensions (approximate)
+        const menuWidth = 150
+        const menuHeight = item ? 100 : 150 // Taller for background menu with more options
+
+        // Adjust if menu would go outside window bounds
+        if (x + menuWidth > windowWidth) {
+            x = windowWidth - menuWidth - 10
+        }
+        if (y + menuHeight > windowHeight) {
+            y = windowHeight - menuHeight - 10
+        }
+
+        // Ensure menu doesn't go negative
+        x = Math.max(10, x)
+        y = Math.max(10, y)
+
+        setContextMenu({ x, y, item })
+    }
+
     return (
         <Window
             windowId={windowId}
@@ -203,30 +243,111 @@ export default function FileManager({ windowId, close, path = "", zIndex, minimi
                     flexDirection: "column",
                     background: "#1e1e1e",
                     color: "white",
-                    position: "relative"
+                    position: "relative",
+                    overflow: "hidden",
+                    fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif"
                 }}
                 onClick={() => {
                     setSelectedItems([])
                     setContextMenu(null)
                 }}
+                onContextMenu={(e) => handleContextMenu(e)}
             >
-                {/* Toolbar */}
+                {/* Clean Toolbar - Only Back Button */}
                 <div
                     style={{
-                        padding: "8px 12px",
-                        borderBottom: "1px solid #444",
+                        padding: "8px 16px",
+                        borderBottom: "1px solid #333",
                         display: "flex",
-                        gap: "8px",
+                        gap: "4px",
                         alignItems: "center",
-                        background: "#252525"
+                        background: "#252525",
+                        flexShrink: 0
                     }}
                 >
-                    <button onClick={goBack} disabled={!currentPath}>← Back</button>
-                    <button onClick={addFile}>+ File</button>
-                    <button onClick={addFolder}>+ Folder</button>
-                    <span style={{ marginLeft: "10px", opacity: 0.7 }}>
-                        /{currentPath}
-                    </span>
+                    {/* Back Button with Icon */}
+                    <button
+                        onClick={goBack}
+                        disabled={!currentPath}
+                        style={{
+                            background: "transparent",
+                            border: "none",
+                            color: !currentPath ? "#666" : "#fff",
+                            padding: "6px 12px",
+                            borderRadius: "4px",
+                            cursor: !currentPath ? "default" : "pointer",
+                            fontSize: "20px",
+                            display: "flex",
+                            alignItems: "center",
+                            gap: "4px",
+                            opacity: !currentPath ? 0.5 : 1,
+                            transition: "background 0.2s"
+                        }}
+                        onMouseEnter={(e) => {
+                            if (currentPath) {
+                                e.currentTarget.style.background = "#3a3a3a"
+                            }
+                        }}
+                        onMouseLeave={(e) => {
+                            e.currentTarget.style.background = "transparent"
+                        }}
+                    >
+                        <span style={{ fontSize: "24px" }}>←</span>
+                    </button>
+
+                    {/* Address Bar */}
+                    <div
+                        style={{
+                            flex: 1,
+                            background: "#1a1a1a",
+                            border: "1px solid #3a3a3a",
+                            borderRadius: "4px",
+                            padding: "6px 12px",
+                            margin: "0 8px",
+                            display: "flex",
+                            alignItems: "center",
+                            gap: "4px",
+                            color: "#ccc",
+                            fontSize: "13px"
+                        }}
+                    >
+                        <span style={{ color: "#569cd6", fontSize: "16px" }}>📁</span>
+                        <span style={{ fontFamily: "monospace" }}>
+                            {currentPath ? currentPath.split("/").map((part, i, arr) => (
+                                <span key={i}>
+                                    {i > 0 && <span style={{ color: "#666", margin: "0 4px" }}>/</span>}
+                                    <span style={{ color: "#fff" }}>{part}</span>
+                                </span>
+                            )) : <span style={{ color: "#888" }}>Home</span>}
+                        </span>
+                    </div>
+
+                    {/* Status Info */}
+                    <div
+                        style={{
+                            display: "flex",
+                            gap: "16px",
+                            padding: "0 8px",
+                            fontSize: "12px",
+                            color: "#888"
+                        }}
+                    >
+                        {items.length > 0 && (
+                            <>
+                                <span title="Folders">
+                                    📁 {folders.length} {folders.length === 1 ? 'folder' : 'folders'}
+                                </span>
+                                <span title="Files">
+                                    📄 {files.length} {files.length === 1 ? 'file' : 'files'}
+                                </span>
+                                {selectedItems.length > 0 && (
+                                    <span style={{ color: "#569cd6" }}>
+                                        ({selectedItems.length} selected)
+                                    </span>
+                                )}
+                            </>
+                        )}
+                    </div>
                 </div>
 
                 {/* File grid */}
@@ -238,11 +359,23 @@ export default function FileManager({ windowId, close, path = "", zIndex, minimi
                         gridTemplateColumns: "repeat(auto-fill, 80px)",
                         gap: "12px",
                         alignContent: "start",
-                        overflowY: "auto"
+                        overflowY: "auto",
+                        background: "#1e1e1e",
+                        minHeight: 0
                     }}
                 >
                     {items.length === 0 ? (
-                        <div style={{ opacity: 0.6 }}>No files or folders</div>
+                        <div style={{
+                            gridColumn: "1 / -1",
+                            textAlign: "center",
+                            padding: "40px",
+                            color: "#888"
+                        }}>
+                            <div>No files or folders</div>
+                            <div style={{ fontSize: "12px", marginTop: "8px" }}>
+                                Right-click to create new items
+                            </div>
+                        </div>
                     ) : (
                         items.map((item) => (
                             <div
@@ -253,12 +386,7 @@ export default function FileManager({ windowId, close, path = "", zIndex, minimi
                                     if (!selectedItems.includes(item.name)) {
                                         setSelectedItems([item.name])
                                     }
-                                    const rect = containerRef.current?.getBoundingClientRect()
-                                    setContextMenu({
-                                        x: e.clientX - (rect?.left ?? 0),
-                                        y: e.clientY - (rect?.top ?? 0) + 40,
-                                        item
-                                    })
+                                    handleContextMenu(e, item)
                                 }}
                                 onClick={(e) => {
                                     e.stopPropagation()
@@ -291,7 +419,40 @@ export default function FileManager({ windowId, close, path = "", zIndex, minimi
                     )}
                 </div>
 
-                {/* Context Menu */}
+                {/* Status Bar */}
+                {items.length > 0 && (
+                    <div
+                        style={{
+                            padding: "6px 16px",
+                            borderTop: "1px solid #333",
+                            background: "#252525",
+                            fontSize: "12px",
+                            color: "#888",
+                            display: "flex",
+                            justifyContent: "space-between",
+                            flexShrink: 0
+                        }}
+                    >
+                        <span>
+                            {items.length} {items.length === 1 ? 'item' : 'items'}
+                            {selectedItems.length > 0 && (
+                                <span style={{ color: "#569cd6", marginLeft: "8px" }}>
+                                    ({selectedItems.length} selected)
+                                </span>
+                            )}
+                        </span>
+                        <span>
+                            {new Date().toLocaleDateString('en-US', {
+                                month: 'short',
+                                day: 'numeric',
+                                hour: '2-digit',
+                                minute: '2-digit'
+                            })}
+                        </span>
+                    </div>
+                )}
+
+                {/* Context Menu - With background options */}
                 {contextMenu && (
                     <div
                         onClick={(e) => e.stopPropagation()}
@@ -302,31 +463,49 @@ export default function FileManager({ windowId, close, path = "", zIndex, minimi
                             background: "#222",
                             border: "1px solid #555",
                             padding: "6px 0",
-                            zIndex: 2000,
+                            zIndex: 10000,
                             borderRadius: "4px",
-                            minWidth: "150px"
+                            minWidth: "150px",
+                            boxShadow: "0 4px 12px rgba(0,0,0,0.5)"
                         }}
                     >
-                        {selectedItems.length === 1 && (
-                            <MenuItem onClick={() => {
-                                renameItem(contextMenu.item)
-                                setContextMenu(null)
-                            }}>
-                                Rename
-                            </MenuItem>
+                        {/* Background context menu (no item) - Add New File/Folder options */}
+                        {!contextMenu.item && (
+                            <>
+                                <MenuItem onClick={() => addFolder()}>
+                                    New Folder
+                                </MenuItem>
+                                <MenuItem onClick={() => addFile()}>
+                                    New File
+                                </MenuItem>
+                            </>
                         )}
-                        <MenuItem
-                            onClick={() => {
-                                const itemsToDelete = selectedItems.length > 1
-                                    ? selectedItems
-                                    : [contextMenu.item.name]
-                                deleteItems(itemsToDelete)
-                                setContextMenu(null)
-                            }}
-                            style={{ color: "#ff6666" }}
-                        >
-                            Delete
-                        </MenuItem>
+
+                        {/* Item context menu (has item) */}
+                        {contextMenu.item && (
+                            <>
+                                {selectedItems.length === 1 && (
+                                    <MenuItem onClick={() => {
+                                        renameItem(contextMenu.item!)
+                                        setContextMenu(null)
+                                    }}>
+                                        Rename
+                                    </MenuItem>
+                                )}
+                                <MenuItem
+                                    onClick={() => {
+                                        const itemsToDelete = selectedItems.length > 1
+                                            ? selectedItems
+                                            : [contextMenu.item!.name]
+                                        deleteItems(itemsToDelete)
+                                        setContextMenu(null)
+                                    }}
+                                    style={{ color: "#ff6666" }}
+                                >
+                                    Delete
+                                </MenuItem>
+                            </>
+                        )}
                     </div>
                 )}
             </div>
@@ -334,6 +513,7 @@ export default function FileManager({ windowId, close, path = "", zIndex, minimi
     )
 }
 
+// Original MenuItem component
 const MenuItem = ({ children, onClick, style }: any) => (
     <div
         onClick={onClick}
