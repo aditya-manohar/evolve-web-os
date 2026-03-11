@@ -16,13 +16,12 @@ export default function FileManager({ windowId, close, path = "", zIndex, minimi
     const [contextMenu, setContextMenu] = useState<{
         x: number
         y: number
-        item?: Item  // Made optional for background context menu
+        item?: Item
     } | null>(null)
 
     const containerRef = useRef<HTMLDivElement>(null)
     const activeWindow = useWindowManager(s => s.activeWindow)
 
-    // File manager is active only when this window is focused
     const isActive = activeWindow === windowId
 
     const loadFiles = async (p = currentPath) => {
@@ -203,16 +202,11 @@ export default function FileManager({ windowId, close, path = "", zIndex, minimi
         // Calculate position relative to container
         let x = e.clientX - rect.left
         let y = e.clientY - rect.top
-
-        // Get window dimensions
         const windowWidth = rect.width
         const windowHeight = rect.height
-
-        // Context menu dimensions (approximate)
         const menuWidth = 150
-        const menuHeight = item ? 100 : 150 // Taller for background menu with more options
+        const menuHeight = item ? 100 : 150
 
-        // Adjust if menu would go outside window bounds
         if (x + menuWidth > windowWidth) {
             x = windowWidth - menuWidth - 10
         }
@@ -220,7 +214,6 @@ export default function FileManager({ windowId, close, path = "", zIndex, minimi
             y = windowHeight - menuHeight - 10
         }
 
-        // Ensure menu doesn't go negative
         x = Math.max(10, x)
         y = Math.max(10, y)
 
@@ -253,7 +246,6 @@ export default function FileManager({ windowId, close, path = "", zIndex, minimi
                 }}
                 onContextMenu={(e) => handleContextMenu(e)}
             >
-                {/* Clean Toolbar - Only Back Button */}
                 <div
                     style={{
                         padding: "8px 16px",

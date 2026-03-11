@@ -17,6 +17,7 @@ export default function Desktop() {
     item?: any
   } | null>(null)
   const [minimizedApps, setMinimizedApps] = useState<string[]>([])
+  const [currentDateTime, setCurrentDateTime] = useState(new Date())
 
   const desktopRef = useRef<HTMLDivElement>(null)
 
@@ -26,6 +27,15 @@ export default function Desktop() {
 
   // Desktop is active when no window is active
   const isDesktopActive = activeWindow === null
+
+  // Update date and time every second
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentDateTime(new Date())
+    }, 1000)
+
+    return () => clearInterval(timer)
+  }, [])
 
   const openApp = (id: string, props?: any) => {
     const existingApp = openApps.find(a => a.id === id)
@@ -247,6 +257,19 @@ export default function Desktop() {
     }
   }
 
+  // Format date and time
+  const formattedTime = currentDateTime.toLocaleTimeString('en-US', {
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit'
+  })
+
+  const formattedDate = currentDateTime.toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric'
+  })
+
   return (
     <div
       ref={desktopRef}
@@ -403,7 +426,6 @@ export default function Desktop() {
         )
       })}
 
-      {/* Open windows */}
       {openApps
         .filter(app => !minimizedApps.includes(app.id))
         .map((appInstance) => {
@@ -424,7 +446,6 @@ export default function Desktop() {
           )
         })}
 
-      {/* Context menus */}
       {contextMenu?.type === "desktop" && (
         <div
           style={{
@@ -485,7 +506,6 @@ export default function Desktop() {
         </div>
       )}
 
-      {/* Taskbar */}
       <div
         style={{
           position: "fixed",
@@ -497,36 +517,60 @@ export default function Desktop() {
           borderTop: "1px solid #444",
           display: "flex",
           alignItems: "center",
-          gap: "10px",
+          justifyContent: "space-between",
           padding: "0 10px",
           zIndex: 10000
         }}
       >
-        {minimizedApps.map(id => {
-          const app = openApps.find(a => a.id === id)
-          if (!app) return null
-          const meta = apps.find(a => a.id === app.component)
-          return (
-            <div
-              key={id}
-              onClick={() => restoreApp(id)}
-              style={{
-                padding: "4px 12px",
-                background: "#222",
-                border: "1px solid #555",
-                cursor: "pointer",
-                borderRadius: "3px",
-                fontSize: "13px",
-                display: "flex",
-                alignItems: "center",
-                gap: "6px"
-              }}
-            >
-              <span>{meta?.icon}</span>
-              <span>{meta?.name}</span>
-            </div>
-          )
-        })}
+        <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
+          {minimizedApps.map(id => {
+            const app = openApps.find(a => a.id === id)
+            if (!app) return null
+            const meta = apps.find(a => a.id === app.component)
+            return (
+              <div
+                key={id}
+                onClick={() => restoreApp(id)}
+                style={{
+                  padding: "4px 12px",
+                  background: "#222",
+                  border: "1px solid #555",
+                  cursor: "pointer",
+                  borderRadius: "3px",
+                  fontSize: "13px",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "6px"
+                }}
+              >
+                <span>{meta?.icon}</span>
+                <span>{meta?.name}</span>
+              </div>
+            )
+          })}
+        </div>
+        <div
+          style={{
+            display: "flex",
+            gap: "16px",
+            padding: "0 12px",
+            background: "#1a1a1a",
+            borderRadius: "4px",
+            height: "28px",
+            alignItems: "center",
+            border: "1px solid #333"
+          }}
+        >
+          <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+            <span style={{ fontSize: "12px", color: "#ccc" }}>{formattedDate}</span>
+          </div>
+          <div style={{ width: "1px", height: "16px", background: "#444" }} />
+          <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+            <span style={{ fontSize: "12px", color: "#ccc", fontFamily: "monospace" }}>
+              {formattedTime}
+            </span>
+          </div>
+        </div>
       </div>
     </div>
   )
