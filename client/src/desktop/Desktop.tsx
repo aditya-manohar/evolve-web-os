@@ -3,6 +3,7 @@ import { useState, useEffect, useRef } from "react"
 import { apps } from "../apps/apps"
 import { useWindowManager } from "../store/windowManager"
 import { useKeyboard } from "../hooks/useKeyboard"
+import AIMode from "./AIMode"
 
 export default function Desktop() {
   const [openApps, setOpenApps] = useState<any[]>([])
@@ -10,6 +11,7 @@ export default function Desktop() {
   const [desktopItems, setDesktopItems] = useState<any[]>([])
   const [positions, setPositions] = useState<Record<string, { x: number, y: number }>>({})
   const [dragging, setDragging] = useState<string | null>(null)
+  const [aiModeActive, setAiModeActive] = useState(false)
   const [contextMenu, setContextMenu] = useState<{
     type: "desktop" | "icon"
     x: number
@@ -139,6 +141,24 @@ export default function Desktop() {
   useEffect(() => {
     loadDesktop()
   }, [])
+
+  useKeyboard({
+    id: 'ai-shortcut',
+    priority: 1000, // High priority
+    keys: [
+      {
+        key: 'i',
+        ctrl: true,
+        handler: (e) => {
+          e.preventDefault()
+          e.stopPropagation()
+          console.log('Ctrl+I pressed - toggling AI mode') // Add debug log
+          setAiModeActive(prev => !prev)
+          return true // Important: return true to indicate handled
+        }
+      }
+    ]
+  })
 
   // Desktop keyboard handlers - only active when no window is focused
   useKeyboard({
@@ -313,6 +333,10 @@ export default function Desktop() {
       onMouseUp={() => setDragging(null)}
       onMouseLeave={() => setDragging(null)}
     >
+      <AIMode
+        isActive={aiModeActive}
+        onExit={() => setAiModeActive(false)}
+      />
       {/* Desktop icons */}
       {apps.map((app, index) => {
         const defaultPos = getDefaultPosition(index)
