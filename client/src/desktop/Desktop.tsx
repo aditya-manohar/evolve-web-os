@@ -38,6 +38,19 @@ export default function Desktop() {
     return () => clearInterval(timer)
   }, [])
 
+  useEffect(() => {
+    const handleDesktopRefresh = () => {
+      console.log('Received refresh event from FileManager')
+      loadDesktop()
+    }
+
+    window.addEventListener('desktop-needs-refresh', handleDesktopRefresh)
+
+    return () => {
+      window.removeEventListener('desktop-needs-refresh', handleDesktopRefresh)
+    }
+  }, [])
+
   const openApp = (id: string, props?: any) => {
     const existingApp = openApps.find(a => a.id === id)
 

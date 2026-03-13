@@ -66,6 +66,9 @@ export default function FileManager({ windowId, close, path = "", zIndex, minimi
         })
 
         loadFiles(currentPath)
+        if (currentPath === 'Desktop' || currentPath === '') {
+            window.dispatchEvent(new CustomEvent('desktop-needs-refresh'))
+        }
         setContextMenu(null)
     }
 
@@ -80,6 +83,9 @@ export default function FileManager({ windowId, close, path = "", zIndex, minimi
         })
 
         loadFiles(currentPath)
+        if (currentPath === 'Desktop' || currentPath === '') {
+            window.dispatchEvent(new CustomEvent('desktop-needs-refresh'))
+        }
         setContextMenu(null)
     }
 
@@ -111,6 +117,9 @@ export default function FileManager({ windowId, close, path = "", zIndex, minimi
         })
 
         loadFiles(currentPath)
+        if (currentPath === 'Desktop' || currentPath === '') {
+            window.dispatchEvent(new CustomEvent('desktop-needs-refresh'))
+        }
         setContextMenu(null)
     }
 
@@ -128,6 +137,9 @@ export default function FileManager({ windowId, close, path = "", zIndex, minimi
         )
 
         loadFiles(currentPath)
+        if (currentPath === 'Desktop' || currentPath === '') {
+            window.dispatchEvent(new CustomEvent('desktop-needs-refresh'))
+        }
         setSelectedItems([])
         setContextMenu(null)
     }
@@ -150,6 +162,9 @@ export default function FileManager({ windowId, close, path = "", zIndex, minimi
             message: `${clipboardItems.length} item(s) ${cut ? 'cut' : 'copied'} to clipboard`
         })
         setTimeout(() => setClipboardIndicator({ show: false, message: "" }), 2000)
+        if (currentPath === 'Desktop' || currentPath === '') {
+            window.dispatchEvent(new CustomEvent('desktop-needs-refresh'))
+        }
         setContextMenu(null)
     }
 
@@ -196,6 +211,9 @@ export default function FileManager({ windowId, close, path = "", zIndex, minimi
         setTimeout(() => setClipboardIndicator({ show: false, message: "" }), 2000)
 
         loadFiles()
+        if (currentPath === 'Desktop' || currentPath === '') {
+            window.dispatchEvent(new CustomEvent('desktop-needs-refresh'))
+        }
         setContextMenu(null)
     }
 
