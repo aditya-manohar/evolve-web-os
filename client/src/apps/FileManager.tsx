@@ -1,8 +1,8 @@
-// FileManager.tsx
 import Window from "../desktop/Window"
 import { useEffect, useState, useRef } from "react"
 import { useWindowManager } from "../store/windowManager"
 import { useKeyboard } from "../hooks/useKeyboard"
+import { useClipboard } from "../store/clipboardStore"
 
 type Item = {
     name: string
@@ -13,6 +13,7 @@ export default function FileManager({ windowId, close, path = "", zIndex, minimi
     const [items, setItems] = useState<Item[]>([])
     const [currentPath, setCurrentPath] = useState(path || "")
     const [selectedItems, setSelectedItems] = useState<string[]>([])
+    const [clipboardIndicator, setClipboardIndicator] = useState<{ show: boolean, message: string }>({ show: false, message: "" })
     const [contextMenu, setContextMenu] = useState<{
         x: number
         y: number
@@ -23,6 +24,11 @@ export default function FileManager({ windowId, close, path = "", zIndex, minimi
     const activeWindow = useWindowManager(s => s.activeWindow)
 
     const isActive = activeWindow === windowId
+
+    const isFolder = (name: string) => {
+        const item = items.find(i => i.name === name)
+        return item?.type === "folder"
+    }
 
     const loadFiles = async (p = currentPath) => {
         try {
@@ -126,11 +132,77 @@ export default function FileManager({ windowId, close, path = "", zIndex, minimi
         setContextMenu(null)
     }
 
+    const copyFiles = (fileNames: string[], cut: boolean = false) => {
+        const clipboardItems = fileNames.map(name => {
+            const item = items.find(i => i.name === name)
+            return {
+                name,
+                path: currentPath,
+                type: item?.type || "file",
+                sourcePath: currentPath ? `${currentPath}/${name}` : name
+            }
+        })
+
+        useClipboard.getState().setClipboard(clipboardItems, cut ? "cut" : "copy")
+
+        setClipboardIndicator({
+            show: true,
+            message: `${clipboardItems.length} item(s) ${cut ? 'cut' : 'copied'} to clipboard`
+        })
+        setTimeout(() => setClipboardIndicator({ show: false, message: "" }), 2000)
+        setContextMenu(null)
+    }
+
+    const pasteFiles = async () => {
+        const { items: clipboardItems, action, clearClipboard } = useClipboard.getState()
+        if (clipboardItems.length === 0) return
+
+        for (const item of clipboardItems) {
+            const destPath = currentPath ? `${currentPath}/${item.name}` : item.name
+
+            if (action === "copy") {
+                await fetch("http://localhost:4000/api/files/copy", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        source: item.sourcePath,
+                        destination: destPath
+                    })
+                })
+            } else if (action === "cut") {
+                await fetch("http://localhost:4000/api/files/move", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        source: item.sourcePath,
+                        destination: destPath
+                    })
+                })
+            }
+        }
+
+        if (action === "cut") {
+            clearClipboard()
+            setClipboardIndicator({
+                show: true,
+                message: `${clipboardItems.length} item(s) moved`
+            })
+        } else {
+            setClipboardIndicator({
+                show: true,
+                message: `${clipboardItems.length} item(s) pasted`
+            })
+        }
+        setTimeout(() => setClipboardIndicator({ show: false, message: "" }), 2000)
+
+        loadFiles()
+        setContextMenu(null)
+    }
+
     useEffect(() => {
         loadFiles(currentPath)
     }, [currentPath])
 
-    // File manager keyboard handlers - only active when this window is focused
     useKeyboard({
         id: `filemanager-${windowId}`,
         priority: isActive ? 50 : 0,
@@ -142,6 +214,34 @@ export default function FileManager({ windowId, close, path = "", zIndex, minimi
                 handler: (e) => {
                     e.preventDefault()
                     setSelectedItems(items.map(i => i.name))
+                }
+            },
+            {
+                key: 'c',
+                ctrl: true,
+                handler: (e) => {
+                    e.preventDefault()
+                    if (selectedItems.length > 0) {
+                        copyFiles(selectedItems, false)
+                    }
+                }
+            },
+            {
+                key: 'x',
+                ctrl: true,
+                handler: (e) => {
+                    e.preventDefault()
+                    if (selectedItems.length > 0) {
+                        copyFiles(selectedItems, true)
+                    }
+                }
+            },
+            {
+                key: 'v',
+                ctrl: true,
+                handler: (e) => {
+                    e.preventDefault()
+                    pasteFiles()
                 }
             },
             {
@@ -191,7 +291,6 @@ export default function FileManager({ windowId, close, path = "", zIndex, minimi
     const folders = items.filter(item => item.type === "folder")
     const files = items.filter(item => item.type === "file")
 
-    // Handle context menu positioning
     const handleContextMenu = (e: React.MouseEvent, item?: Item) => {
         e.preventDefault()
         e.stopPropagation()
@@ -199,13 +298,12 @@ export default function FileManager({ windowId, close, path = "", zIndex, minimi
         const rect = containerRef.current?.getBoundingClientRect()
         if (!rect) return
 
-        // Calculate position relative to container
         let x = e.clientX - rect.left
         let y = e.clientY - rect.top
         const windowWidth = rect.width
         const windowHeight = rect.height
-        const menuWidth = 150
-        const menuHeight = item ? 100 : 150
+        const menuWidth = 180
+        const menuHeight = item ? 200 : 150
 
         if (x + menuWidth > windowWidth) {
             x = windowWidth - menuWidth - 10
@@ -257,7 +355,6 @@ export default function FileManager({ windowId, close, path = "", zIndex, minimi
                         flexShrink: 0
                     }}
                 >
-                    {/* Back Button with Icon */}
                     <button
                         onClick={goBack}
                         disabled={!currentPath}
@@ -287,7 +384,6 @@ export default function FileManager({ windowId, close, path = "", zIndex, minimi
                         <span style={{ fontSize: "24px" }}>←</span>
                     </button>
 
-                    {/* Address Bar */}
                     <div
                         style={{
                             flex: 1,
@@ -314,7 +410,6 @@ export default function FileManager({ windowId, close, path = "", zIndex, minimi
                         </span>
                     </div>
 
-                    {/* Status Info */}
                     <div
                         style={{
                             display: "flex",
@@ -342,7 +437,6 @@ export default function FileManager({ windowId, close, path = "", zIndex, minimi
                     </div>
                 </div>
 
-                {/* File grid */}
                 <div
                     style={{
                         flex: 1,
@@ -410,8 +504,6 @@ export default function FileManager({ windowId, close, path = "", zIndex, minimi
                         ))
                     )}
                 </div>
-
-                {/* Status Bar */}
                 {items.length > 0 && (
                     <div
                         style={{
@@ -443,8 +535,6 @@ export default function FileManager({ windowId, close, path = "", zIndex, minimi
                         </span>
                     </div>
                 )}
-
-                {/* Context Menu - With background options */}
                 {contextMenu && (
                     <div
                         onClick={(e) => e.stopPropagation()}
@@ -457,11 +547,10 @@ export default function FileManager({ windowId, close, path = "", zIndex, minimi
                             padding: "6px 0",
                             zIndex: 10000,
                             borderRadius: "4px",
-                            minWidth: "150px",
+                            minWidth: "180px",
                             boxShadow: "0 4px 12px rgba(0,0,0,0.5)"
                         }}
                     >
-                        {/* Background context menu (no item) - Add New File/Folder options */}
                         {!contextMenu.item && (
                             <>
                                 <MenuItem onClick={() => addFolder()}>
@@ -470,10 +559,26 @@ export default function FileManager({ windowId, close, path = "", zIndex, minimi
                                 <MenuItem onClick={() => addFile()}>
                                     New File
                                 </MenuItem>
+                                <Divider />
+
+                                {useClipboard.getState().hasItems() && (
+                                    <MenuItem onClick={() => {
+                                        pasteFiles()
+                                        setContextMenu(null)
+                                    }}>
+                                        Paste
+                                    </MenuItem>
+                                )}
+
+                                <Divider />
+                                <MenuItem onClick={() => {
+                                    loadFiles(currentPath)
+                                    setContextMenu(null)
+                                }}>
+                                    Refresh
+                                </MenuItem>
                             </>
                         )}
-
-                        {/* Item context menu (has item) */}
                         {contextMenu.item && (
                             <>
                                 {selectedItems.length === 1 && (
@@ -484,6 +589,36 @@ export default function FileManager({ windowId, close, path = "", zIndex, minimi
                                         Rename
                                     </MenuItem>
                                 )}
+
+                                <MenuItem onClick={() => {
+                                    const itemsToCopy = selectedItems.length > 0 ? selectedItems : [contextMenu.item!.name]
+                                    copyFiles(itemsToCopy, false)
+                                    setContextMenu(null)
+                                }}>
+                                    Copy
+                                </MenuItem>
+
+                                <MenuItem onClick={() => {
+                                    const itemsToCut = selectedItems.length > 0 ? selectedItems : [contextMenu.item!.name]
+                                    copyFiles(itemsToCut, true)
+                                    setContextMenu(null)
+                                }}>
+                                    Cut
+                                </MenuItem>
+
+                                {useClipboard.getState().hasItems() && (
+                                    <>
+                                        <Divider />
+                                        <MenuItem onClick={() => {
+                                            pasteFiles()
+                                            setContextMenu(null)
+                                        }}>
+                                            Paste
+                                        </MenuItem>
+                                    </>
+                                )}
+
+                                <Divider />
                                 <MenuItem
                                     onClick={() => {
                                         const itemsToDelete = selectedItems.length > 1
@@ -500,12 +635,44 @@ export default function FileManager({ windowId, close, path = "", zIndex, minimi
                         )}
                     </div>
                 )}
+
+                {clipboardIndicator.show && (
+                    <div
+                        style={{
+                            position: "fixed",
+                            top: 20,
+                            left: "50%",
+                            transform: "translateX(-50%)",
+                            background: "#333",
+                            border: "1px solid #88ccff",
+                            color: "#88ccff",
+                            padding: "8px 16px",
+                            borderRadius: "20px",
+                            zIndex: 10001,
+                            fontSize: "13px",
+                            boxShadow: "0 0 20px rgba(136, 204, 255, 0.3)",
+                            backdropFilter: "blur(5px)",
+                            animation: "fadeInOut 2s ease",
+                            pointerEvents: "none",
+                        }}
+                    >
+                        {clipboardIndicator.message}
+                    </div>
+                )}
+
+                <style>{`
+                    @keyframes fadeInOut {
+                        0% { opacity: 0; transform: translateX(-50%) translateY(-10px); }
+                        15% { opacity: 1; transform: translateX(-50%) translateY(0); }
+                        85% { opacity: 1; transform: translateX(-50%) translateY(0); }
+                        100% { opacity: 0; transform: translateX(-50%) translateY(-10px); }
+                    }
+                `}</style>
             </div>
         </Window>
     )
 }
 
-// Original MenuItem component
 const MenuItem = ({ children, onClick, style }: any) => (
     <div
         onClick={onClick}
@@ -525,4 +692,8 @@ const MenuItem = ({ children, onClick, style }: any) => (
     >
         {children}
     </div>
+)
+
+const Divider = () => (
+    <div style={{ height: "1px", background: "#444", margin: "4px 0" }} />
 )

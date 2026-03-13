@@ -1,9 +1,9 @@
-// Desktop.tsx
 import { useState, useEffect, useRef } from "react"
 import { apps } from "../apps/apps"
 import { useWindowManager } from "../store/windowManager"
 import { useKeyboard } from "../hooks/useKeyboard"
 import AIMode from "./AIMode"
+import { useClipboard } from "../store/clipboardStore"
 
 export default function Desktop() {
   const [openApps, setOpenApps] = useState<any[]>([])
@@ -20,6 +20,7 @@ export default function Desktop() {
   } | null>(null)
   const [minimizedApps, setMinimizedApps] = useState<string[]>([])
   const [currentDateTime, setCurrentDateTime] = useState(new Date())
+  const [clipboardIndicator, setClipboardIndicator] = useState<{ show: boolean, message: string }>({ show: false, message: "" })
 
   const desktopRef = useRef<HTMLDivElement>(null)
 
@@ -27,10 +28,8 @@ export default function Desktop() {
   const setActiveWindow = useWindowManager(s => s.setActiveWindow)
   const getNextZIndex = useWindowManager(s => s.getNextZIndex)
 
-  // Desktop is active when no window is active
   const isDesktopActive = activeWindow === null
 
-  // Update date and time every second
   useEffect(() => {
     const timer = setInterval(() => {
       setCurrentDateTime(new Date())
@@ -128,6 +127,77 @@ export default function Desktop() {
     setContextMenu(null)
   }
 
+  const copyItems = async (names: string[], cut: boolean = false) => {
+    const items = names.map(name => {
+      const desktopItem = desktopItems.find(i => i.name === name)
+      const appItem = apps.find(a => a.id === name)
+
+      return {
+        name,
+        path: "Desktop",
+        type: desktopItem?.type || (appItem ? "app" : "file"),
+        sourcePath: `Desktop/${name}`
+      }
+    }).filter(item => item.type !== "app")
+
+    if (items.length === 0) return
+
+    useClipboard.getState().setClipboard(items, cut ? "cut" : "copy")
+
+    setClipboardIndicator({
+      show: true,
+      message: `${items.length} item(s) ${cut ? 'cut' : 'copied'} to clipboard`
+    })
+    setTimeout(() => setClipboardIndicator({ show: false, message: "" }), 2000)
+    setContextMenu(null)
+  }
+
+  const pasteItems = async () => {
+    const { items, action, clearClipboard } = useClipboard.getState()
+    if (items.length === 0) return
+
+    for (const item of items) {
+      const destPath = `Desktop/${item.name}`
+
+      if (action === "copy") {
+        await fetch("http://localhost:4000/api/files/copy", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            source: item.sourcePath,
+            destination: destPath
+          })
+        })
+      } else if (action === "cut") {
+        await fetch("http://localhost:4000/api/files/move", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            source: item.sourcePath,
+            destination: destPath
+          })
+        })
+      }
+    }
+
+    if (action === "cut") {
+      clearClipboard()
+      setClipboardIndicator({
+        show: true,
+        message: `${items.length} item(s) moved`
+      })
+    } else {
+      setClipboardIndicator({
+        show: true,
+        message: `${items.length} item(s) pasted`
+      })
+    }
+    setTimeout(() => setClipboardIndicator({ show: false, message: "" }), 2000)
+
+    loadDesktop()
+    setContextMenu(null)
+  }
+
   const loadDesktop = async () => {
     try {
       const res = await fetch("http://localhost:4000/api/files/list?path=Desktop")
@@ -144,7 +214,7 @@ export default function Desktop() {
 
   useKeyboard({
     id: 'ai-shortcut',
-    priority: 1000, // High priority
+    priority: 1000,
     keys: [
       {
         key: 'i',
@@ -152,15 +222,14 @@ export default function Desktop() {
         handler: (e) => {
           e.preventDefault()
           e.stopPropagation()
-          console.log('Ctrl+I pressed - toggling AI mode') // Add debug log
+          console.log('Ctrl+I pressed - toggling AI mode')
           setAiModeActive(prev => !prev)
-          return true // Important: return true to indicate handled
+          return true
         }
       }
     ]
   })
 
-  // Desktop keyboard handlers - only active when no window is focused
   useKeyboard({
     id: 'desktop',
     priority: isDesktopActive ? 100 : 0,
@@ -175,6 +244,34 @@ export default function Desktop() {
             ...desktopItems.map(i => i.name)
           ]
           setSelectedItems(allItems)
+        }
+      },
+      {
+        key: 'c',
+        ctrl: true,
+        handler: (e) => {
+          e.preventDefault()
+          if (selectedItems.length > 0) {
+            copyItems(selectedItems, false)
+          }
+        }
+      },
+      {
+        key: 'x',
+        ctrl: true,
+        handler: (e) => {
+          e.preventDefault()
+          if (selectedItems.length > 0) {
+            copyItems(selectedItems, true)
+          }
+        }
+      },
+      {
+        key: 'v',
+        ctrl: true,
+        handler: (e) => {
+          e.preventDefault()
+          pasteItems()
         }
       },
       {
@@ -277,13 +374,11 @@ export default function Desktop() {
     }
   }
 
-  // Format date and time
   const formattedTime = currentDateTime.toLocaleTimeString('en-US', {
     hour: '2-digit',
     minute: '2-digit',
     second: '2-digit'
   })
-
   const formattedDate = currentDateTime.toLocaleDateString('en-US', {
     month: 'short',
     day: 'numeric',
@@ -303,11 +398,10 @@ export default function Desktop() {
         background: "#0a0a0a"
       }}
       onClick={(e) => {
-        // Only deselect if clicking directly on desktop
         if (e.target === desktopRef.current) {
           setSelectedItems([])
           setContextMenu(null)
-          setActiveWindow(null) // Focus desktop
+          setActiveWindow(null)
         }
       }}
       onContextMenu={(e) => {
@@ -337,7 +431,7 @@ export default function Desktop() {
         isActive={aiModeActive}
         onExit={() => setAiModeActive(false)}
       />
-      {/* Desktop icons */}
+
       {apps.map((app, index) => {
         const defaultPos = getDefaultPosition(index)
         const pos = positions[app.id] || defaultPos
@@ -481,14 +575,20 @@ export default function Desktop() {
             padding: "6px 0",
             zIndex: 9999,
             borderRadius: "4px",
-            minWidth: "150px"
+            minWidth: "180px"
           }}
           onClick={(e) => e.stopPropagation()}
         >
-          <MenuItem onClick={createFolder}>New Folder</MenuItem>
-          <MenuItem onClick={createFile}>New File</MenuItem>
+          <MenuItem onClick={createFolder}>📁 New Folder</MenuItem>
+          <MenuItem onClick={createFile}>📄 New File</MenuItem>
           <Divider />
-          <MenuItem onClick={refreshDesktop}>Refresh</MenuItem>
+
+          {useClipboard.getState().hasItems() && (
+            <MenuItem onClick={pasteItems}>📋 Paste</MenuItem>
+          )}
+
+          <Divider />
+          <MenuItem onClick={refreshDesktop}>🔄 Refresh</MenuItem>
         </div>
       )}
 
@@ -504,17 +604,44 @@ export default function Desktop() {
             padding: "6px 0",
             zIndex: 9999,
             borderRadius: "4px",
-            minWidth: "150px"
+            minWidth: "180px",
+            boxShadow: "0 4px 12px rgba(0,0,0,0.5)"
           }}
         >
           {selectedItems.length === 1 && (
-            <MenuItem onClick={() => {
-              renameItem(contextMenu.item)
-              setContextMenu(null)
-            }}>
-              Rename
-            </MenuItem>
+            <>
+              <MenuItem onClick={() => {
+                renameItem(contextMenu.item)
+                setContextMenu(null)
+              }}>
+                Rename
+              </MenuItem>
+              <Divider />
+            </>
           )}
+
+          <MenuItem onClick={() => {
+            const itemsToCopy = selectedItems.length > 0 ? selectedItems : [contextMenu.item.name]
+            copyItems(itemsToCopy, false)
+          }}>
+            Copy
+          </MenuItem>
+
+          <MenuItem onClick={() => {
+            const itemsToCut = selectedItems.length > 0 ? selectedItems : [contextMenu.item.name]
+            copyItems(itemsToCut, true)
+          }}>
+            Cut
+          </MenuItem>
+
+          {useClipboard.getState().hasItems() && (
+            <>
+              <Divider />
+              <MenuItem onClick={pasteItems}>📋 Paste</MenuItem>
+            </>
+          )}
+
+          <Divider />
           <MenuItem
             onClick={() => {
               const itemsToDelete = selectedItems.length > 1
@@ -527,6 +654,29 @@ export default function Desktop() {
           >
             Delete
           </MenuItem>
+        </div>
+      )}
+
+      {clipboardIndicator.show && (
+        <div
+          style={{
+            position: "fixed",
+            top: 20,
+            left: "50%",
+            transform: "translateX(-50%)",
+            background: "#333",
+            border: "1px solid #88ccff",
+            color: "#88ccff",
+            padding: "8px 16px",
+            borderRadius: "20px",
+            zIndex: 10001,
+            fontSize: "13px",
+            boxShadow: "0 0 20px rgba(136, 204, 255, 0.3)",
+            backdropFilter: "blur(5px)",
+            animation: "fadeInOut 2s ease",
+          }}
+        >
+          {clipboardIndicator.message}
         </div>
       )}
 
@@ -596,6 +746,15 @@ export default function Desktop() {
           </div>
         </div>
       </div>
+
+      <style>{`
+        @keyframes fadeInOut {
+          0% { opacity: 0; transform: translateX(-50%) translateY(-10px); }
+          15% { opacity: 1; transform: translateX(-50%) translateY(0); }
+          85% { opacity: 1; transform: translateX(-50%) translateY(0); }
+          100% { opacity: 0; transform: translateX(-50%) translateY(-10px); }
+        }
+      `}</style>
     </div>
   )
 }
@@ -620,7 +779,6 @@ const MenuItem = ({ children, onClick, style }: any) => (
     {children}
   </div>
 )
-
 const Divider = () => (
   <div style={{ height: "1px", background: "#444", margin: "4px 0" }} />
 )
