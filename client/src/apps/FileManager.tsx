@@ -22,7 +22,6 @@ export default function FileManager({ windowId, close, path = "", zIndex, minimi
 
     const containerRef = useRef<HTMLDivElement>(null)
     const activeWindow = useWindowManager(s => s.activeWindow)
-
     const isActive = activeWindow === windowId
 
     const isFolder = (name: string) => {
@@ -124,14 +123,8 @@ export default function FileManager({ windowId, close, path = "", zIndex, minimi
     }
 
     const deleteItems = async (names: string[]) => {
-        const hasDesktop = names.some(name => name === 'Desktop')
-        const isInDesktopPath = currentPath === '' || currentPath === 'Desktop'
-
-        if (hasDesktop && isInDesktopPath) {
-            alert('⛔ Cannot delete this folder')
-            return
-        }
         if (!confirm(`Delete ${names.length} item(s)?`)) return
+
         await Promise.all(
             names.map(name =>
                 fetch("http://localhost:4000/api/files/delete", {
@@ -142,6 +135,9 @@ export default function FileManager({ windowId, close, path = "", zIndex, minimi
             )
         )
         loadFiles(currentPath)
+        if (currentPath === 'Desktop' || currentPath === '') {
+            window.dispatchEvent(new CustomEvent('desktop-needs-refresh'))
+        }
         setSelectedItems([])
         setContextMenu(null)
     }
