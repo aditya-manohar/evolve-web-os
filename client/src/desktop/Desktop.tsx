@@ -125,8 +125,12 @@ export default function Desktop() {
   }
 
   const deleteItems = async (names: string[]) => {
+    const hasDesktop = names.some(name => name === 'Desktop')
+    if (hasDesktop) {
+      alert('⛔ Cannot delete this folder')
+      return
+    }
     if (!confirm(`Delete ${names.length} item(s)?`)) return
-
     for (const name of names) {
       await fetch("http://localhost:4000/api/files/delete", {
         method: "POST",
@@ -134,7 +138,6 @@ export default function Desktop() {
         body: JSON.stringify({ name, path: "Desktop" })
       })
     }
-
     loadDesktop()
     setSelectedItems([])
     setContextMenu(null)
@@ -592,16 +595,16 @@ export default function Desktop() {
           }}
           onClick={(e) => e.stopPropagation()}
         >
-          <MenuItem onClick={createFolder}>📁 New Folder</MenuItem>
-          <MenuItem onClick={createFile}>📄 New File</MenuItem>
+          <MenuItem onClick={createFolder}>New Folder</MenuItem>
+          <MenuItem onClick={createFile}>New File</MenuItem>
           <Divider />
 
           {useClipboard.getState().hasItems() && (
-            <MenuItem onClick={pasteItems}>📋 Paste</MenuItem>
+            <MenuItem onClick={pasteItems}>Paste</MenuItem>
           )}
 
           <Divider />
-          <MenuItem onClick={refreshDesktop}>🔄 Refresh</MenuItem>
+          <MenuItem onClick={refreshDesktop}>Refresh</MenuItem>
         </div>
       )}
 
