@@ -9,13 +9,14 @@ export default function Window({
     children,
     onClose,
     zIndex,
-    onMinimize
+    onMinimize,
+    defaultSize = { width: 700, height: 400 },
 }: any) {
     const setActiveWindow = useWindowManager(state => state.setActiveWindow)
     const registerWindow = useWindowManager(state => state.registerWindow)
     const unregisterWindow = useWindowManager(state => state.unregisterWindow)
     const [isMaximized, setIsMaximized] = useState(false)
-    const [size, setSize] = useState({ width: 700, height: 400 })
+    const [size, setSize] = useState(defaultSize)
     const [position, setPosition] = useState({ x: 120, y: 80 })
     const [previousState, setPreviousState] = useState<any>(null)
 
