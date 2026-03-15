@@ -398,6 +398,8 @@ export default function Desktop() {
     year: 'numeric'
   })
 
+  const windowZIndices = useWindowManager(state => state.windowZIndices)
+
   return (
     <div
       ref={desktopRef}
@@ -564,6 +566,7 @@ export default function Desktop() {
           if (!app) return null
 
           const Component = app.component
+          const windowZIndex = windowZIndices[appInstance.id] || appInstance.zIndex || 10
 
           return (
             <Component
@@ -572,7 +575,7 @@ export default function Desktop() {
               close={() => closeApp(appInstance.id)}
               minimize={() => minimizeApp(appInstance.id)}
               path={appInstance.path}
-              zIndex={appInstance.zIndex || 10}
+              zIndex={windowZIndex}  
             />
           )
         })}

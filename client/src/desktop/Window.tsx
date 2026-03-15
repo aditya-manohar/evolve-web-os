@@ -1,4 +1,3 @@
-// Window.tsx
 import { Rnd } from "react-rnd"
 import { useEffect, useState } from "react"
 import { useWindowManager } from "../store/windowManager"
@@ -15,6 +14,7 @@ export default function Window({
     const setActiveWindow = useWindowManager(state => state.setActiveWindow)
     const registerWindow = useWindowManager(state => state.registerWindow)
     const unregisterWindow = useWindowManager(state => state.unregisterWindow)
+    const bringToFront = useWindowManager(state => state.bringToFront)
     const [isMaximized, setIsMaximized] = useState(false)
     const [size, setSize] = useState(defaultSize)
     const [position, setPosition] = useState({ x: 120, y: 80 })
@@ -26,7 +26,7 @@ export default function Window({
     }, [windowId])
 
     const handleFocus = () => {
-        setActiveWindow(windowId)
+        bringToFront(windowId)
     }
 
     const handleMaximize = () => {
